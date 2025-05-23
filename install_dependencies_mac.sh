@@ -250,6 +250,7 @@ EOF
     create_launcher "Processor" "processor"
     create_launcher "Viewer" "viewer"
     create_launcher "Price Analyzer" "price_analyzer"
+    create_launcher "Gallery Creator" "gallery_creator"
     create_launcher "Direct Listing" "direct_listing"
     create_launcher "CSV Export" "csv_export"
     
@@ -279,20 +280,22 @@ echo "  1) Setup Tool - Create and manage item queues"
 echo "  2) Processor Tool - AI-powered photo analysis"
 echo "  3) Viewer Tool - Review and export results"
 echo "  4) Price Analyzer - Analyze eBay pricing"
-echo "  5) Direct Listing - Direct eBay API listing"
-echo "  6) CSV Export - Export to eBay CSV format"
+echo "  5) Gallery Creator - Create HTML galleries"
+echo "  6) Direct Listing - Direct eBay API listing"
+echo "  7) CSV Export - Export to eBay CSV format"
 echo
 echo "  0) Exit"
 echo
-read -p "Enter your choice (0-6): " choice
+read -p "Enter your choice (0-7): " choice
 
 case $choice in
     1) ./Setup.command ;;
     2) ./Processor.command ;;
     3) ./Viewer.command ;;
     4) ./Price\ Analyzer.command ;;
-    5) ./Direct\ Listing.command ;;
-    6) ./CSV\ Export.command ;;
+    5) ./Gallery\ Creator.command ;;
+    6) ./Direct\ Listing.command ;;
+    7) ./CSV\ Export.command ;;
     0) exit 0 ;;
     *) echo -e "${RED}Invalid choice${NC}"; sleep 2; exec "$0" ;;
 esac

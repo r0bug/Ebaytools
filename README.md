@@ -10,6 +10,7 @@ A comprehensive automation suite for creating eBay listings using AI/LLM technol
 - 📊 **CSV Export** - Generates eBay-compatible CSV files for bulk uploads
 - 📋 **Queue Management** - Organize and process multiple items efficiently
 - 🔄 **Complete Workflow** - From setup to final eBay listing
+- 🌐 **HTML Gallery Creator** - Create classified ad-style galleries for local sales
 
 ## Installation
 
@@ -65,6 +66,7 @@ python install_dependencies.py
 - **Processor Tool** (`processor.py`) - AI-powered photo analysis
 - **Viewer Tool** (`viewer.py`) - Review and export results
 - **Price Analyzer** (`price_analyzer.py`) - Market price analysis
+- **Gallery Creator** (`gallery_creator.py`) - Create HTML classified ad galleries
 - **Direct Listing** (`direct_listing.py`) - Direct eBay API integration
 - **CSV Export** (`csv_export.py`) - Export to eBay format
 
@@ -78,6 +80,7 @@ python install_dependencies.py
 ## Documentation
 
 - [Full User Manual](eBay_Tools_User_Manual.md) - Comprehensive guide
+- [Gallery Creator Guide](GALLERY_README.md) - HTML gallery documentation
 - [macOS Installation](README_MAC.md) - macOS specific instructions
 - [API Documentation](ebay_tools/README.md) - Technical details
 
