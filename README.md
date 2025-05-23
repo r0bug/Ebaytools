@@ -11,6 +11,7 @@ A comprehensive automation suite for creating eBay listings using AI/LLM technol
 - 📋 **Queue Management** - Organize and process multiple items efficiently
 - 🔄 **Complete Workflow** - From setup to final eBay listing
 - 🌐 **HTML Gallery Creator** - Create classified ad-style galleries for local sales
+- 📱 **Mobile Integration** - Android app for on-the-go photo collection
 
 ## Installation
 
@@ -67,6 +68,7 @@ python install_dependencies.py
 - **Viewer Tool** (`viewer.py`) - Review and export results
 - **Price Analyzer** (`price_analyzer.py`) - Market price analysis
 - **Gallery Creator** (`gallery_creator.py`) - Create HTML classified ad galleries
+- **Mobile Import** (`mobile_import.py`) - Import data from mobile app
 - **Direct Listing** (`direct_listing.py`) - Direct eBay API integration
 - **CSV Export** (`csv_export.py`) - Export to eBay format
 
@@ -81,6 +83,7 @@ python install_dependencies.py
 
 - [Full User Manual](eBay_Tools_User_Manual.md) - Comprehensive guide
 - [Gallery Creator Guide](GALLERY_README.md) - HTML gallery documentation
+- [Mobile Integration Guide](MOBILE_INTEGRATION.md) - Android app and import docs
 - [macOS Installation](README_MAC.md) - macOS specific instructions
 - [API Documentation](ebay_tools/README.md) - Technical details
 
