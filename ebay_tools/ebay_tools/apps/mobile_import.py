@@ -12,6 +12,7 @@ from datetime import datetime
 from typing import Dict, List, Any, Optional
 import zipfile
 from pathlib import Path
+import sys
 
 from ebay_tools.core.schema import EbayItemSchema
 from ebay_tools.utils.file_utils import ensure_directory_exists, safe_load_json, safe_save_json
@@ -173,10 +174,17 @@ class MobileDataImporter:
         
         if filename:
             try:
-                self.import_data = safe_load_json(filename)
-                self.import_data['base_path'] = os.path.dirname(filename)
-                self.populate_tree()
-                self.status_bar.set_status(f"Imported {len(self.import_data.get('items', []))} items from JSON")
+                data = safe_load_json(filename)
+                
+                # Check if this is new Android app format with queues
+                if 'queues' in data:
+                    self.import_android_format(data, os.path.dirname(filename))
+                else:
+                    # Legacy format
+                    self.import_data = data
+                    self.import_data['base_path'] = os.path.dirname(filename)
+                    self.populate_tree()
+                    self.status_bar.set_status(f"Imported {len(self.import_data.get('items', []))} items from JSON")
             except Exception as e:
                 messagebox.showerror("Import Error", f"Failed to import JSON: {str(e)}")
                 
@@ -204,6 +212,55 @@ class MobileDataImporter:
             
             # Store item data
             self.tree.set(tree_item, 'item_data', json.dumps(item))
+            
+    def import_android_format(self, data, base_path):
+        """Import data from Android app queue format"""
+        # Convert Android format to standard format
+        items = []
+        
+        for queue in data.get('queues', []):
+            queue_name = queue.get('name', 'Unnamed Queue')
+            
+            for item in queue.get('items', []):
+                # Convert item format
+                converted_item = {
+                    'title': item.get('name', 'Untitled Item'),
+                    'notes': item.get('description', ''),
+                    'category': queue_name,  # Use queue name as category
+                    'photos': [],
+                    'metadata': {
+                        'queue_id': queue.get('id'),
+                        'queue_name': queue_name,
+                        'item_id': item.get('id'),
+                        'created_at': item.get('createdAt'),
+                        'updated_at': item.get('updatedAt'),
+                        'synced': queue.get('isSynced', False)
+                    }
+                }
+                
+                # Add photo paths
+                for image in item.get('images', []):
+                    photo_path = image.get('imagePath', '')
+                    if photo_path:
+                        # Handle relative or absolute paths
+                        if not os.path.isabs(photo_path):
+                            photo_path = os.path.join(base_path, photo_path)
+                        converted_item['photos'].append(photo_path)
+                
+                items.append(converted_item)
+        
+        # Update import data
+        self.import_data = {
+            'version': '2.0',
+            'source': 'eBay Tools Companion App',
+            'items': items,
+            'base_path': base_path
+        }
+        
+        self.populate_tree()
+        total_items = len(items)
+        total_queues = len(data.get('queues', []))
+        self.status_bar.set_status(f"Imported {total_items} items from {total_queues} queues")
             
     def select_all(self):
         """Select all items"""
