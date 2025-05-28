@@ -27,6 +27,7 @@ from ebay_tools.core.config import ConfigManager
 # Import utility modules
 from ebay_tools.utils.image_utils import open_image_with_orientation, fit_image_to_frame, create_photo_image
 from ebay_tools.utils.ui_utils import StatusBar, center_window
+from ebay_tools.utils.launcher_utils import ToolLauncher, create_tools_menu
 
 # Configure logging
 logging.basicConfig(
@@ -115,6 +116,18 @@ class EbayJsonViewer:
         tools_menu.add_command(label="Export Current Description", command=self.export_description)
         tools_menu.add_command(label="Export All Descriptions", command=self.export_all_descriptions)
         tools_menu.add_command(label="Export Item as CSV", command=self.export_item_as_csv)
+        tools_menu.add_separator()
+        
+        # Add launch options for other tools
+        tools_menu.add_command(label="Launch Setup", command=lambda: ToolLauncher.launch_setup())
+        tools_menu.add_command(label="Launch Processor", command=self.launch_processor)
+        tools_menu.add_command(label="Launch Price Analyzer", command=self.launch_price_analyzer)
+        tools_menu.add_command(label="Launch Gallery Creator", command=self.launch_gallery)
+        tools_menu.add_separator()
+        tools_menu.add_command(label="Launch CSV Export", command=self.launch_csv_export)
+        tools_menu.add_command(label="Launch Mobile Import", command=lambda: ToolLauncher.launch_mobile_import())
+        tools_menu.add_command(label="Launch Direct Listing", command=lambda: ToolLauncher.launch_direct_listing())
+        
         menubar.add_cascade(label="Tools", menu=tools_menu)
         
         # Help menu
@@ -1098,6 +1111,34 @@ Features:
 - Generate CSV files for eBay bulk upload
 """
         messagebox.showinfo("About", about_text)
+    
+    def launch_processor(self):
+        """Launch the LLM Processor with current queue file."""
+        if self.json_file_path and os.path.exists(self.json_file_path):
+            ToolLauncher.launch_processor(self.json_file_path)
+        else:
+            ToolLauncher.launch_processor()
+    
+    def launch_price_analyzer(self):
+        """Launch the Price Analyzer with current queue file."""
+        if self.json_file_path and os.path.exists(self.json_file_path):
+            ToolLauncher.launch_price_analyzer(self.json_file_path)
+        else:
+            ToolLauncher.launch_price_analyzer()
+    
+    def launch_gallery(self):
+        """Launch the Gallery Creator with current queue file."""
+        if self.json_file_path and os.path.exists(self.json_file_path):
+            ToolLauncher.launch_gallery(self.json_file_path)
+        else:
+            ToolLauncher.launch_gallery()
+    
+    def launch_csv_export(self):
+        """Launch the CSV Export tool with current queue file."""
+        if self.json_file_path and os.path.exists(self.json_file_path):
+            ToolLauncher.launch_csv_export(self.json_file_path)
+        else:
+            ToolLauncher.launch_csv_export()
 
 
 def main():

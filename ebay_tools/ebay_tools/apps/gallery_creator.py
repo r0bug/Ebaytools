@@ -25,6 +25,7 @@ from ebay_tools.core.exceptions import EbayToolsError
 from ebay_tools.utils.image_utils import open_image_with_orientation, create_thumbnail
 from ebay_tools.utils.file_utils import ensure_directory_exists, safe_load_json, safe_save_json
 from ebay_tools.utils.ui_utils import StatusBar
+from ebay_tools.utils.launcher_utils import ToolLauncher, create_tools_menu
 
 class GalleryItem:
     """Data structure for gallery items"""
@@ -120,6 +121,20 @@ class GalleryCreator:
         file_menu.add_command(label="Export HTML", command=self.export_html)
         file_menu.add_separator()
         file_menu.add_command(label="Exit", command=self.root.quit)
+        
+        # Tools menu
+        tools_menu = tk.Menu(menubar, tearoff=0)
+        menubar.add_cascade(label="Tools", menu=tools_menu)
+        
+        # Add launch options for other tools
+        tools_menu.add_command(label="Launch Setup", command=lambda: ToolLauncher.launch_setup())
+        tools_menu.add_command(label="Launch Processor", command=lambda: ToolLauncher.launch_processor())
+        tools_menu.add_command(label="Launch Viewer", command=lambda: ToolLauncher.launch_viewer())
+        tools_menu.add_command(label="Launch Price Analyzer", command=lambda: ToolLauncher.launch_price_analyzer())
+        tools_menu.add_separator()
+        tools_menu.add_command(label="Launch CSV Export", command=lambda: ToolLauncher.launch_csv_export())
+        tools_menu.add_command(label="Launch Mobile Import", command=lambda: ToolLauncher.launch_mobile_import())
+        tools_menu.add_command(label="Launch Direct Listing", command=lambda: ToolLauncher.launch_direct_listing())
         
         # Edit menu
         edit_menu = tk.Menu(menubar, tearoff=0)

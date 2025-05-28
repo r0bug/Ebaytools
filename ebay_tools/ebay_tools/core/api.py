@@ -12,10 +12,14 @@ from typing import Dict, Any, List, Optional, Union, Callable
 from dataclasses import dataclass
 import base64
 
-# Configure logging
+# Configure logging with more detail for debugging
 logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s"
+    level=logging.DEBUG if os.getenv('DEBUG_API', '').lower() == 'true' else logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[
+        logging.FileHandler("ebay_api_debug.log", mode='a'),
+        logging.StreamHandler()
+    ]
 )
 logger = logging.getLogger(__name__)
 
@@ -114,6 +118,14 @@ class LLMApiClient:
             return "llava"
         elif "gpt" in url or "openai" in url:
             return "openai"
+        elif "segmind" in url:
+            # Segmind hosts multiple models, detect by endpoint
+            if "claude" in url:
+                return "segmind-claude"
+            elif "llava" in url:
+                return "segmind-llava"
+            else:
+                return "segmind"
         else:
             return "unknown"
     
@@ -167,17 +179,50 @@ class LLMApiClient:
                 "max_tokens": 2000,
                 "temperature": 0.7
             }
-        elif api_type == "llava" and image_data:
-            # LLaVA multimodal API format
+        elif (api_type == "llava" or api_type == "segmind-llava") and image_data:
+            # LLaVA/Segmind multimodal API format
+            # Segmind expects the image data in a specific format
             return {
-                "images": image_data,
-                "prompt": prompt
+                "image": image_data,  # Some APIs use "image" instead of "images"
+                "prompt": prompt,
+                "max_tokens": 1000,
+                "temperature": 0.7
             }
-        elif api_type == "llava" and not image_data:
+        elif (api_type == "llava" or api_type == "segmind-llava") and not image_data:
             # LLaVA text-only API format
             return {
-                "prompt": prompt
+                "prompt": prompt,
+                "max_tokens": 1000,
+                "temperature": 0.7
             }
+        elif api_type == "segmind-claude" and image_data:
+            # Segmind Claude with image
+            return {
+                "prompt": prompt,
+                "image": image_data,
+                "max_tokens": 1000,
+                "temperature": 0.7
+            }
+        elif api_type == "segmind-claude" and not image_data:
+            # Segmind Claude text-only
+            return {
+                "prompt": prompt,
+                "max_tokens": 2000,
+                "temperature": 0.7
+            }
+        elif api_type == "segmind":
+            # Generic Segmind format
+            if image_data:
+                return {
+                    "prompt": prompt,
+                    "image": image_data,
+                    "max_tokens": 1000
+                }
+            else:
+                return {
+                    "prompt": prompt,
+                    "max_tokens": 1000
+                }
         elif api_type == "openai" and image_data:
             # OpenAI GPT-4 Vision format
             return {
@@ -237,27 +282,86 @@ class LLMApiClient:
         """
         api_type = self._detect_api_type()
         
-        if api_type == "claude":
-            # Claude format: extract from content array
-            if "content" in response_data:
-                content_arr = response_data.get("content", [])
-                if content_arr and isinstance(content_arr, list) and len(content_arr) > 0:
-                    first_content = content_arr[0]
-                    if isinstance(first_content, dict) and "text" in first_content:
-                        return first_content["text"]
-        elif api_type == "llava":
-            # LLaVA format
-            if "response" in response_data:
-                return response_data["response"]
-        elif api_type == "openai":
-            # OpenAI format
-            if "choices" in response_data and len(response_data["choices"]) > 0:
-                choice = response_data["choices"][0]
-                if "message" in choice and "content" in choice["message"]:
-                    return choice["message"]["content"]
+        # Log the raw response for debugging
+        logger.debug(f"Raw API response ({api_type}): {json.dumps(response_data, indent=2)[:500]}...")
+        
+        try:
+            if api_type == "claude":
+                # Claude format: extract from content array
+                if "content" in response_data:
+                    content_arr = response_data.get("content", [])
+                    if content_arr and isinstance(content_arr, list) and len(content_arr) > 0:
+                        first_content = content_arr[0]
+                        if isinstance(first_content, dict) and "text" in first_content:
+                            return first_content["text"]
+                # Try alternate Claude format
+                if "completion" in response_data:
+                    return response_data["completion"]
+            elif api_type == "llava" or api_type == "segmind-llava":
+                # LLaVA format - check multiple possible response fields
+                if "response" in response_data:
+                    return response_data["response"]
+                elif "output" in response_data:
+                    return response_data["output"]
+                elif "text" in response_data:
+                    return response_data["text"]
+                elif "generated_text" in response_data:
+                    return response_data["generated_text"]
+                # Segmind sometimes returns the response directly as a string
+                elif isinstance(response_data, str):
+                    return response_data
+            elif api_type == "segmind-claude":
+                # Segmind Claude API might have different response format
+                if "output" in response_data:
+                    return response_data["output"]
+                elif "response" in response_data:
+                    return response_data["response"]
+                elif "completion" in response_data:
+                    return response_data["completion"]
+                # Try standard Claude format
+                elif "content" in response_data:
+                    content_arr = response_data.get("content", [])
+                    if content_arr and isinstance(content_arr, list) and len(content_arr) > 0:
+                        first_content = content_arr[0]
+                        if isinstance(first_content, dict) and "text" in first_content:
+                            return first_content["text"]
+            elif api_type == "segmind":
+                # Generic Segmind format
+                if "output" in response_data:
+                    return response_data["output"]
+                elif "response" in response_data:
+                    return response_data["response"]
+                elif "result" in response_data:
+                    return response_data["result"]
+            elif api_type == "openai":
+                # OpenAI format
+                if "choices" in response_data and len(response_data["choices"]) > 0:
+                    choice = response_data["choices"][0]
+                    if "message" in choice and "content" in choice["message"]:
+                        return choice["message"]["content"]
+                    # Handle legacy format
+                    elif "text" in choice:
+                        return choice["text"]
+            
+            # Try common response fields as fallback
+            common_fields = ["response", "text", "output", "generated_text", "completion", "answer", "result"]
+            for field in common_fields:
+                if field in response_data and isinstance(response_data[field], str):
+                    logger.info(f"Found response in field '{field}'")
+                    return response_data[field]
+            
+            # If response_data is a string itself
+            if isinstance(response_data, str):
+                return response_data
+                
+        except Exception as e:
+            logger.error(f"Error extracting response text: {str(e)}")
+            logger.error(f"Response data type: {type(response_data)}")
+            logger.error(f"Response data: {str(response_data)[:500]}...")
         
         # Fallback: return the whole response as a string
-        return str(response_data)
+        logger.warning(f"Could not extract response text from API type '{api_type}', returning full response")
+        return json.dumps(response_data) if isinstance(response_data, dict) else str(response_data)
     
     def make_request(
         self, 
@@ -328,6 +432,8 @@ class LLMApiClient:
                 if image_path:
                     logger.info(f"With image: {os.path.basename(image_path)}")
                 logger.info(f"Prompt: {prompt[:100]}...")
+                logger.debug(f"Request headers: {headers}")
+                logger.debug(f"Request payload (without image data): {json.dumps({k: v for k, v in payload.items() if k not in ['images', 'image_data']}, indent=2)[:500]}...")
                 
                 # Make the request
                 response = requests.post(
@@ -339,16 +445,36 @@ class LLMApiClient:
                 
                 # Handle response
                 if response.status_code == 200:
+                    # Log raw response for debugging
+                    logger.debug(f"Response status: {response.status_code}")
+                    logger.debug(f"Response headers: {dict(response.headers)}")
+                    
                     # Parse response
-                    result = response.json()
+                    try:
+                        result = response.json()
+                    except json.JSONDecodeError as e:
+                        logger.error(f"Failed to parse JSON response: {str(e)}")
+                        logger.error(f"Raw response text: {response.text[:500]}...")
+                        # Try to return raw text if it's not JSON
+                        if response.text.strip():
+                            return response.text.strip()
+                        raise ApiError(f"Invalid JSON response: {str(e)}", response.status_code, response.text)
                     
                     # Extract text
                     response_text = self.extract_response_text(result)
+                    
+                    if not response_text or response_text == "{}" or response_text == "[]":
+                        logger.error(f"Empty or invalid response extracted")
+                        logger.error(f"Full response: {json.dumps(result, indent=2)[:1000]}...")
+                        raise ApiError("Empty response from API", response.status_code, json.dumps(result))
                     
                     # Cache the response
                     if use_cache:
                         cache_key = self._get_cache_key(self.config.api_url, payload)
                         self.cache[cache_key] = response_text
+                    
+                    # Log successful response
+                    logger.info(f"Successfully received response: {response_text[:100]}...")
                     
                     # Return the response
                     return response_text

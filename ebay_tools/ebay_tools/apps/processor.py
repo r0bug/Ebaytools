@@ -32,6 +32,7 @@ from ebay_tools.utils.image_utils import open_image_with_orientation, create_thu
 from ebay_tools.utils.file_utils import ensure_directory_exists, safe_load_json, safe_save_json
 from ebay_tools.utils.ui_utils import StatusBar
 from ebay_tools.utils.background_utils import BackgroundTask, BackgroundTaskManager
+from ebay_tools.utils.launcher_utils import ToolLauncher, create_tools_menu
 
 # Configure logging
 logging.basicConfig(
@@ -95,6 +96,9 @@ class EbayLLMProcessor:
 
         # Initialize task manager for background processing
         self.task_manager = BackgroundTaskManager(root)
+        
+        # Create menu bar
+        self.create_menu()
     
     def log(self, message):
         """Add a message to the log with timestamp."""
@@ -278,6 +282,14 @@ class EbayLLMProcessor:
         )
         self.launch_viewer_btn.pack(side=tk.LEFT, padx=5)
         
+        # Add button to launch setup
+        self.launch_setup_btn = ttk.Button(
+            self.progress_frame,
+            text="Launch Setup",
+            command=lambda: ToolLauncher.launch_setup()
+        )
+        self.launch_setup_btn.pack(side=tk.LEFT, padx=5)
+        
         # Generate final descriptions checkbox
         self.generate_final_var = tk.BooleanVar(value=True)
         self.generate_final_check = ttk.Checkbutton(
@@ -289,6 +301,49 @@ class EbayLLMProcessor:
         
         # Initialize navigation buttons state
         self.update_navigation_buttons()
+    
+    def create_menu(self):
+        """Create the application menu."""
+        menubar = tk.Menu(self.root)
+        
+        # File menu
+        file_menu = tk.Menu(menubar, tearoff=0)
+        file_menu.add_command(label="Load Queue", command=self.load_queue)
+        file_menu.add_command(label="Save Queue", command=self.save_queue)
+        file_menu.add_command(label="Reload Queue", command=self.reload_queue)
+        file_menu.add_separator()
+        file_menu.add_command(label="Exit", command=self.root.quit)
+        menubar.add_cascade(label="File", menu=file_menu)
+        
+        # Processing menu
+        process_menu = tk.Menu(menubar, tearoff=0)
+        process_menu.add_command(label="Start Processing", command=self.start_processing)
+        process_menu.add_command(label="Stop Processing", command=self.stop_processing)
+        process_menu.add_command(label="Reprocess Current", command=self.reprocess_current)
+        process_menu.add_separator()
+        process_menu.add_command(label="Find Next Unprocessed", command=self.find_next_unprocessed)
+        menubar.add_cascade(label="Process", menu=process_menu)
+        
+        # Tools menu
+        tools_menu = tk.Menu(menubar, tearoff=0)
+        tools_menu.add_command(label="Launch Setup", command=lambda: ToolLauncher.launch_setup())
+        tools_menu.add_command(label="Launch Viewer", command=self.launch_viewer)
+        tools_menu.add_command(label="Launch Price Analyzer", command=self.launch_price_analyzer)
+        tools_menu.add_command(label="Launch Gallery Creator", command=self.launch_gallery)
+        tools_menu.add_separator()
+        tools_menu.add_command(label="Launch CSV Export", command=self.launch_csv_export)
+        tools_menu.add_command(label="Launch Mobile Import", command=lambda: ToolLauncher.launch_mobile_import())
+        tools_menu.add_command(label="Launch Direct Listing", command=lambda: ToolLauncher.launch_direct_listing())
+        menubar.add_cascade(label="Tools", menu=tools_menu)
+        
+        # Help menu
+        help_menu = tk.Menu(menubar, tearoff=0)
+        help_menu.add_command(label="Test API Connection", command=self.test_api_connection)
+        help_menu.add_separator()
+        help_menu.add_command(label="About", command=lambda: messagebox.showinfo("About", "eBay LLM Photo Processor\nPart of eBay Tools Suite"))
+        menubar.add_cascade(label="Help", menu=help_menu)
+        
+        self.root.config(menu=menubar)
     
     def toggle_api_key_visibility(self):
         """Toggle the visibility of the API key."""
@@ -1765,6 +1820,27 @@ For item specifics, use a format like "Brand: Apple" with each item specific on 
         except Exception as e:
             self.log(f"Error launching viewer: {str(e)}")
             messagebox.showerror("Error", f"Failed to launch viewer: {str(e)}")
+    
+    def launch_price_analyzer(self):
+        """Launch the Price Analyzer with current queue file."""
+        if self.queue_file_path and os.path.exists(self.queue_file_path):
+            ToolLauncher.launch_price_analyzer(self.queue_file_path)
+        else:
+            ToolLauncher.launch_price_analyzer()
+    
+    def launch_gallery(self):
+        """Launch the Gallery Creator with current queue file."""
+        if self.queue_file_path and os.path.exists(self.queue_file_path):
+            ToolLauncher.launch_gallery(self.queue_file_path)
+        else:
+            ToolLauncher.launch_gallery()
+    
+    def launch_csv_export(self):
+        """Launch the CSV Export tool with current queue file."""
+        if self.queue_file_path and os.path.exists(self.queue_file_path):
+            ToolLauncher.launch_csv_export(self.queue_file_path)
+        else:
+            ToolLauncher.launch_csv_export()
 
 
 def main():
