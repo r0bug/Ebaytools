@@ -128,27 +128,52 @@ class EbayLLMProcessor:
             logger.info(message)
     
     def create_frames(self):
-        """Create all the frames for the UI."""
+        """Create all the frames for the UI with scrollable main area."""
+        # Create main scrollable canvas
+        self.main_canvas = tk.Canvas(self.root)
+        self.main_scrollbar = ttk.Scrollbar(self.root, orient="vertical", command=self.main_canvas.yview)
+        self.scrollable_frame = ttk.Frame(self.main_canvas)
+        
+        # Configure scrolling
+        self.scrollable_frame.bind(
+            "<Configure>",
+            lambda e: self.main_canvas.configure(scrollregion=self.main_canvas.bbox("all"))
+        )
+        
+        self.main_canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
+        self.main_canvas.configure(yscrollcommand=self.main_scrollbar.set)
+        
+        # Pack canvas and scrollbar
+        self.main_canvas.pack(side="left", fill="both", expand=True)
+        self.main_scrollbar.pack(side="right", fill="y")
+        
+        # Enable mouse wheel scrolling
+        def _on_mousewheel(event):
+            self.main_canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+        
+        self.main_canvas.bind("<MouseWheel>", _on_mousewheel)
+        
+        # Create frames inside scrollable area
         # Top frame for queue operations
-        self.top_frame = ttk.Frame(self.root, padding=10)
+        self.top_frame = ttk.Frame(self.scrollable_frame, padding=10)
         
         # API settings frame
-        self.api_frame = ttk.LabelFrame(self.root, text="API Settings", padding=10)
+        self.api_frame = ttk.LabelFrame(self.scrollable_frame, text="API Settings", padding=10)
         
         # Item selection frame
-        self.selection_frame = ttk.LabelFrame(self.root, text="Item Selection", padding=10)
+        self.selection_frame = ttk.LabelFrame(self.scrollable_frame, text="Item Selection", padding=10)
         
         # Middle frame for current item display
-        self.item_frame = ttk.LabelFrame(self.root, text="Current Item", padding=10)
+        self.item_frame = ttk.LabelFrame(self.scrollable_frame, text="Current Item", padding=10)
         
         # Photo display frame
-        self.photo_frame = ttk.Frame(self.root, padding=10)
+        self.photo_frame = ttk.Frame(self.scrollable_frame, padding=10)
         
         # Progress frame
-        self.progress_frame = ttk.Frame(self.root, padding=10)
+        self.progress_frame = ttk.Frame(self.scrollable_frame, padding=10)
         
         # Log frame
-        self.log_frame = ttk.LabelFrame(self.root, text="Processing Log", padding=10)
+        self.log_frame = ttk.LabelFrame(self.scrollable_frame, text="Processing Log", padding=10)
         
         # Layout main frames
         self.top_frame.pack(fill=tk.X, pady=5)
@@ -287,55 +312,62 @@ class EbayLLMProcessor:
         self.photo_info_label = ttk.Label(self.photo_frame, text="")
         self.photo_info_label.pack(fill=tk.X, pady=5)
         
-        # Progress widgets
-        self.progress_label = ttk.Label(self.progress_frame, text="Ready")
+        # Progress display section
+        progress_top_frame = ttk.Frame(self.progress_frame)
+        progress_top_frame.pack(fill=tk.X, pady=(0, 5))
+        
+        self.progress_label = ttk.Label(progress_top_frame, text="Ready")
         self.progress_label.pack(side=tk.LEFT, padx=5)
         
-        self.progress_bar = ttk.Progressbar(self.progress_frame, orient=tk.HORIZONTAL, length=300, mode='determinate')
+        self.progress_bar = ttk.Progressbar(progress_top_frame, orient=tk.HORIZONTAL, length=300, mode='determinate')
         self.progress_bar.pack(side=tk.LEFT, padx=5, fill=tk.X, expand=True)
         
-        # Add estimated time remaining label
-        self.time_remaining_label = ttk.Label(self.progress_frame, text="")
+        self.time_remaining_label = ttk.Label(progress_top_frame, text="")
         self.time_remaining_label.pack(side=tk.LEFT, padx=5)
         
-        self.start_btn = ttk.Button(self.progress_frame, text="Process Selected", command=self.start_processing_selected)
+        # First row of buttons
+        button_row1 = ttk.Frame(self.progress_frame)
+        button_row1.pack(fill=tk.X, pady=2)
+        
+        self.start_btn = ttk.Button(button_row1, text="Process Selected", command=self.start_processing_selected)
         self.start_btn.pack(side=tk.LEFT, padx=5)
         
-        self.stop_btn = ttk.Button(self.progress_frame, text="Stop", command=self.stop_processing, state=tk.DISABLED)
+        self.stop_btn = ttk.Button(button_row1, text="Stop", command=self.stop_processing, state=tk.DISABLED)
         self.stop_btn.pack(side=tk.LEFT, padx=5)
         
-        # Add a reprocess button
-        self.reprocess_btn = ttk.Button(
-            self.progress_frame,
-            text="Reprocess Current",
-            command=self.reprocess_current
-        )
+        self.reprocess_btn = ttk.Button(button_row1, text="Reprocess Current", command=self.reprocess_current)
         self.reprocess_btn.pack(side=tk.LEFT, padx=5)
         
-        # Add button to launch viewer
-        self.launch_viewer_btn = ttk.Button(
-            self.progress_frame,
-            text="Launch Viewer",
-            command=self.launch_viewer
-        )
+        # Second row of buttons
+        button_row2 = ttk.Frame(self.progress_frame)
+        button_row2.pack(fill=tk.X, pady=2)
+        
+        self.launch_viewer_btn = ttk.Button(button_row2, text="Launch Viewer", command=self.launch_viewer)
         self.launch_viewer_btn.pack(side=tk.LEFT, padx=5)
         
-        # Add button to launch setup
         if LAUNCHER_AVAILABLE:
-            self.launch_setup_btn = ttk.Button(
-                self.progress_frame,
-                text="Launch Setup",
-                command=lambda: ToolLauncher.launch_setup()
-            )
+            self.launch_setup_btn = ttk.Button(button_row2, text="Launch Setup", command=lambda: ToolLauncher.launch_setup())
             self.launch_setup_btn.pack(side=tk.LEFT, padx=5)
         
-        # Add button for automated batch pricing
+        # Move Auto Price All to a new row for better visibility
+        pricing_frame = ttk.Frame(self.progress_frame)
+        pricing_frame.pack(fill=tk.X, pady=5)
+        
+        # Add button for automated batch pricing (prominent placement)
         self.auto_price_btn = ttk.Button(
-            self.progress_frame,
-            text="Auto Price All",
-            command=self.auto_price_all_items
+            pricing_frame,
+            text="🏷️ AUTO PRICE ALL 🏷️",
+            command=self.auto_price_all_items,
+            style="Accent.TButton"
         )
-        self.auto_price_btn.pack(side=tk.LEFT, padx=5)
+        self.auto_price_btn.pack(side=tk.LEFT, padx=10)
+        
+        # Style the button to make it more visible
+        try:
+            style = ttk.Style()
+            style.configure("Accent.TButton", font=("Arial", 10, "bold"))
+        except:
+            pass
         
         # Generate final descriptions checkbox
         self.generate_final_var = tk.BooleanVar(value=True)

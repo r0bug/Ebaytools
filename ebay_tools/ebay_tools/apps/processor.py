@@ -121,27 +121,52 @@ class EbayLLMProcessor:
             logger.info(message)
     
     def create_frames(self):
-        """Create all the frames for the UI."""
+        """Create all the frames for the UI with scrollable main area."""
+        # Create main scrollable canvas
+        self.main_canvas = tk.Canvas(self.root)
+        self.main_scrollbar = ttk.Scrollbar(self.root, orient="vertical", command=self.main_canvas.yview)
+        self.scrollable_frame = ttk.Frame(self.main_canvas)
+        
+        # Configure scrolling
+        self.scrollable_frame.bind(
+            "<Configure>",
+            lambda e: self.main_canvas.configure(scrollregion=self.main_canvas.bbox("all"))
+        )
+        
+        # Create the window inside the canvas
+        self.main_canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
+        self.main_canvas.configure(yscrollcommand=self.main_scrollbar.set)
+        
+        # Pack the main scrollable area
+        self.main_canvas.pack(side="left", fill="both", expand=True)
+        self.main_scrollbar.pack(side="right", fill="y")
+        
+        # Bind mouse wheel to canvas
+        def _on_mousewheel(event):
+            self.main_canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+        self.main_canvas.bind_all("<MouseWheel>", _on_mousewheel)
+        
+        # Create frames inside the scrollable frame
         # Top frame for queue operations
-        self.top_frame = ttk.Frame(self.root, padding=10)
+        self.top_frame = ttk.Frame(self.scrollable_frame, padding=10)
         
         # API settings frame
-        self.api_frame = ttk.LabelFrame(self.root, text="API Settings", padding=10)
+        self.api_frame = ttk.LabelFrame(self.scrollable_frame, text="API Settings", padding=10)
         
         # Item selection frame
-        self.selection_frame = ttk.LabelFrame(self.root, text="Item Selection", padding=10)
+        self.selection_frame = ttk.LabelFrame(self.scrollable_frame, text="Item Selection", padding=10)
         
         # Middle frame for current item display
-        self.item_frame = ttk.LabelFrame(self.root, text="Current Item", padding=10)
+        self.item_frame = ttk.LabelFrame(self.scrollable_frame, text="Current Item", padding=10)
         
         # Photo display frame
-        self.photo_frame = ttk.Frame(self.root, padding=10)
+        self.photo_frame = ttk.Frame(self.scrollable_frame, padding=10)
         
         # Progress frame
-        self.progress_frame = ttk.Frame(self.root, padding=10)
+        self.progress_frame = ttk.Frame(self.scrollable_frame, padding=10)
         
         # Log frame
-        self.log_frame = ttk.LabelFrame(self.root, text="Processing Log", padding=10)
+        self.log_frame = ttk.LabelFrame(self.scrollable_frame, text="Processing Log", padding=10)
         
         # Layout main frames
         self.top_frame.pack(fill=tk.X, pady=5)
