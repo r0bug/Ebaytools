@@ -9,19 +9,19 @@ echo.
 :: Try different Python commands
 python --version >nul 2>&1
 if %errorlevel% == 0 (
-    python -m ebay_tools.apps.processor
+    python -m ebay_tools.apps.process_ebay
     goto :end
 )
 
 py --version >nul 2>&1
 if %errorlevel% == 0 (
-    py -m ebay_tools.apps.processor
+    py -m ebay_tools.apps.process_ebay
     goto :end
 )
 
 python3 --version >nul 2>&1
 if %errorlevel% == 0 (
-    python3 -m ebay_tools.apps.processor
+    python3 -m ebay_tools.apps.process_ebay
     goto :end
 )
 

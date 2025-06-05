@@ -32,6 +32,7 @@ from ebay_tools.utils.image_utils import open_image_with_orientation, create_thu
 from ebay_tools.utils.file_utils import ensure_directory_exists, safe_load_json, safe_save_json
 from ebay_tools.utils.ui_utils import StatusBar
 from ebay_tools.utils.background_utils import BackgroundTask, BackgroundTaskManager
+from ebay_tools.utils.launcher_utils import ToolLauncher, create_tools_menu
 
 # Configure logging
 logging.basicConfig(
@@ -65,6 +66,8 @@ class EbayLLMProcessor:
         self.work_queue = []
         self.current_item_index = -1
         self.current_photo_index = -1
+        self.selected_items = set()  # Track selected items for processing
+        self.item_checkboxes = {}  # Store checkbox widgets
         self.api_client = None  # Will be initialized with configuration
         self.processing = False
         self.processing_thread = None  # For background processing
@@ -95,6 +98,9 @@ class EbayLLMProcessor:
 
         # Initialize task manager for background processing
         self.task_manager = BackgroundTaskManager(root)
+        
+        # Create menu bar
+        self.create_menu()
     
     def log(self, message):
         """Add a message to the log with timestamp."""
@@ -121,6 +127,9 @@ class EbayLLMProcessor:
         # API settings frame
         self.api_frame = ttk.LabelFrame(self.root, text="API Settings", padding=10)
         
+        # Item selection frame
+        self.selection_frame = ttk.LabelFrame(self.root, text="Item Selection", padding=10)
+        
         # Middle frame for current item display
         self.item_frame = ttk.LabelFrame(self.root, text="Current Item", padding=10)
         
@@ -136,6 +145,7 @@ class EbayLLMProcessor:
         # Layout main frames
         self.top_frame.pack(fill=tk.X, pady=5)
         self.api_frame.pack(fill=tk.X, pady=5, padx=10)
+        self.selection_frame.pack(fill=tk.X, pady=5, padx=10)
         self.item_frame.pack(fill=tk.X, pady=5, padx=10)
         self.photo_frame.pack(fill=tk.BOTH, expand=True, pady=5, padx=10)
         self.progress_frame.pack(fill=tk.X, pady=5, padx=10)
@@ -168,6 +178,30 @@ class EbayLLMProcessor:
         
         self.queue_status_label = ttk.Label(self.top_frame, text="Queue: 0 items (0 processed)")
         self.queue_status_label.pack(side=tk.RIGHT, padx=5)
+        
+        # Item selection widgets
+        selection_controls_frame = ttk.Frame(self.selection_frame)
+        selection_controls_frame.pack(fill=tk.X, pady=5)
+        
+        self.select_all_btn = ttk.Button(selection_controls_frame, text="Select All", command=self.select_all_items)
+        self.select_all_btn.pack(side=tk.LEFT, padx=5)
+        
+        self.deselect_all_btn = ttk.Button(selection_controls_frame, text="Deselect All", command=self.deselect_all_items)
+        self.deselect_all_btn.pack(side=tk.LEFT, padx=5)
+        
+        self.select_unprocessed_btn = ttk.Button(selection_controls_frame, text="Select Unprocessed", command=self.select_unprocessed_items)
+        self.select_unprocessed_btn.pack(side=tk.LEFT, padx=5)
+        
+        self.selection_status_label = ttk.Label(selection_controls_frame, text="0 items selected")
+        self.selection_status_label.pack(side=tk.LEFT, padx=20)
+        
+        # Create scrollable frame for item checkboxes
+        self.items_canvas = tk.Canvas(self.selection_frame, height=150)
+        self.items_scrollbar = ttk.Scrollbar(self.selection_frame, orient="vertical", command=self.items_canvas.yview)
+        self.items_scrollable_frame = ttk.Frame(self.items_canvas)
+        self.items_canvas.configure(yscrollcommand=self.items_scrollbar.set)
+        self.items_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        self.items_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         
         # API settings widgets
         ttk.Label(self.api_frame, text="API Type:").grid(row=0, column=0, sticky=tk.W, padx=5, pady=5)
@@ -256,7 +290,7 @@ class EbayLLMProcessor:
         self.time_remaining_label = ttk.Label(self.progress_frame, text="")
         self.time_remaining_label.pack(side=tk.LEFT, padx=5)
         
-        self.start_btn = ttk.Button(self.progress_frame, text="Start Processing", command=self.start_processing)
+        self.start_btn = ttk.Button(self.progress_frame, text="Process Selected", command=self.start_processing_selected)
         self.start_btn.pack(side=tk.LEFT, padx=5)
         
         self.stop_btn = ttk.Button(self.progress_frame, text="Stop", command=self.stop_processing, state=tk.DISABLED)
@@ -278,6 +312,14 @@ class EbayLLMProcessor:
         )
         self.launch_viewer_btn.pack(side=tk.LEFT, padx=5)
         
+        # Add button to launch setup
+        self.launch_setup_btn = ttk.Button(
+            self.progress_frame,
+            text="Launch Setup",
+            command=lambda: ToolLauncher.launch_setup()
+        )
+        self.launch_setup_btn.pack(side=tk.LEFT, padx=5)
+        
         # Generate final descriptions checkbox
         self.generate_final_var = tk.BooleanVar(value=True)
         self.generate_final_check = ttk.Checkbutton(
@@ -289,6 +331,49 @@ class EbayLLMProcessor:
         
         # Initialize navigation buttons state
         self.update_navigation_buttons()
+    
+    def create_menu(self):
+        """Create the application menu."""
+        menubar = tk.Menu(self.root)
+        
+        # File menu
+        file_menu = tk.Menu(menubar, tearoff=0)
+        file_menu.add_command(label="Load Queue", command=self.load_queue)
+        file_menu.add_command(label="Save Queue", command=self.save_queue)
+        file_menu.add_command(label="Reload Queue", command=self.reload_queue)
+        file_menu.add_separator()
+        file_menu.add_command(label="Exit", command=self.root.quit)
+        menubar.add_cascade(label="File", menu=file_menu)
+        
+        # Processing menu
+        process_menu = tk.Menu(menubar, tearoff=0)
+        process_menu.add_command(label="Start Processing", command=self.start_processing)
+        process_menu.add_command(label="Stop Processing", command=self.stop_processing)
+        process_menu.add_command(label="Reprocess Current", command=self.reprocess_current)
+        process_menu.add_separator()
+        process_menu.add_command(label="Find Next Unprocessed", command=self.find_next_unprocessed)
+        menubar.add_cascade(label="Process", menu=process_menu)
+        
+        # Tools menu
+        tools_menu = tk.Menu(menubar, tearoff=0)
+        tools_menu.add_command(label="Launch Setup", command=lambda: ToolLauncher.launch_setup())
+        tools_menu.add_command(label="Launch Viewer", command=self.launch_viewer)
+        tools_menu.add_command(label="Launch Price Analyzer", command=self.launch_price_analyzer)
+        tools_menu.add_command(label="Launch Gallery Creator", command=self.launch_gallery)
+        tools_menu.add_separator()
+        tools_menu.add_command(label="Launch CSV Export", command=self.launch_csv_export)
+        tools_menu.add_command(label="Launch Mobile Import", command=lambda: ToolLauncher.launch_mobile_import())
+        tools_menu.add_command(label="Launch Direct Listing", command=lambda: ToolLauncher.launch_direct_listing())
+        menubar.add_cascade(label="Tools", menu=tools_menu)
+        
+        # Help menu
+        help_menu = tk.Menu(menubar, tearoff=0)
+        help_menu.add_command(label="Test API Connection", command=self.test_api_connection)
+        help_menu.add_separator()
+        help_menu.add_command(label="About", command=lambda: messagebox.showinfo("About", "eBay LLM Photo Processor\nPart of eBay Tools Suite"))
+        menubar.add_cascade(label="Help", menu=help_menu)
+        
+        self.root.config(menu=menubar)
     
     def toggle_api_key_visibility(self):
         """Toggle the visibility of the API key."""
@@ -447,6 +532,7 @@ class EbayLLMProcessor:
             
             # Update UI
             self.update_queue_status()
+            self.update_item_selection_list()
             self.log(f"Loaded queue with {len(self.work_queue)} items")
             
             # Set current indices to first item, first photo if queue not empty
@@ -577,6 +663,92 @@ class EbayLLMProcessor:
             self.progress_bar["value"] = progress_pct
         else:
             self.progress_bar["value"] = 0
+    
+    def update_item_selection_list(self):
+        """Update the item selection checkboxes list."""
+        # Clear existing checkboxes
+        for widget in self.items_scrollable_frame.winfo_children():
+            widget.destroy()
+        self.item_checkboxes.clear()
+        
+        # Create new checkboxes for each item
+        for i, item in enumerate(self.work_queue):
+            item_frame = ttk.Frame(self.items_scrollable_frame)
+            item_frame.pack(fill=tk.X, pady=2)
+            
+            # Create checkbox variable
+            var = tk.BooleanVar(value=i in self.selected_items)
+            
+            # Create checkbox
+            cb = ttk.Checkbutton(
+                item_frame,
+                text=f"Item {i+1}: {item.get('temp_title', item.get('title', 'Untitled'))} (SKU: {item.get('sku', 'N/A')})",
+                variable=var,
+                command=lambda idx=i, v=var: self.toggle_item_selection(idx, v)
+            )
+            cb.pack(side=tk.LEFT, fill=tk.X, expand=True)
+            
+            # Add status indicator
+            status = "✓" if any(photo.get('processed', False) for photo in item.get('photos', [])) else "□"
+            status_label = ttk.Label(item_frame, text=status, foreground="green" if status == "✓" else "gray")
+            status_label.pack(side=tk.RIGHT, padx=5)
+            
+            self.item_checkboxes[i] = var
+        
+        # Update canvas scroll region
+        self.items_scrollable_frame.update_idletasks()
+        self.items_canvas.create_window((0, 0), window=self.items_scrollable_frame, anchor="nw")
+        self.items_canvas.configure(scrollregion=self.items_canvas.bbox("all"))
+        
+        # Update selection status
+        self.update_selection_status()
+    
+    def toggle_item_selection(self, index, var):
+        """Toggle item selection."""
+        if var.get():
+            self.selected_items.add(index)
+        else:
+            self.selected_items.discard(index)
+        self.update_selection_status()
+    
+    def select_all_items(self):
+        """Select all items."""
+        self.selected_items = set(range(len(self.work_queue)))
+        for i, var in self.item_checkboxes.items():
+            var.set(True)
+        self.update_selection_status()
+    
+    def deselect_all_items(self):
+        """Deselect all items."""
+        self.selected_items.clear()
+        for var in self.item_checkboxes.values():
+            var.set(False)
+        self.update_selection_status()
+    
+    def select_unprocessed_items(self):
+        """Select only unprocessed items."""
+        self.selected_items.clear()
+        for i, item in enumerate(self.work_queue):
+            # Check if any photo is processed
+            if not any(photo.get('processed', False) for photo in item.get('photos', [])):
+                self.selected_items.add(i)
+                if i in self.item_checkboxes:
+                    self.item_checkboxes[i].set(True)
+            else:
+                if i in self.item_checkboxes:
+                    self.item_checkboxes[i].set(False)
+        self.update_selection_status()
+    
+    def update_selection_status(self):
+        """Update the selection status label."""
+        count = len(self.selected_items)
+        self.selection_status_label.config(text=f"{count} items selected")
+        
+        # Enable/disable process button based on selection
+        if count > 0 and not self.processing:
+            self.start_btn.config(state=tk.NORMAL)
+        else:
+            self.start_btn.config(state=tk.DISABLED if self.processing else tk.NORMAL)
     
     def prev_item(self):
         """Navigate to the previous item in the queue."""
@@ -1656,6 +1828,23 @@ For item specifics, use a format like "Brand: Apple" with each item specific on 
         # Log completion
         self.log(final_message)
         
+        # If we were processing a selected subset, restore original queue
+        if hasattr(self, '_original_queue'):
+            # Save the processed items back to original queue
+            for idx, processed_item in enumerate(self.work_queue):
+                self._original_queue[self._selected_indices[idx]] = processed_item
+            
+            # Restore original queue
+            self.work_queue = self._original_queue
+            self.current_item_index = self._original_index
+            delattr(self, '_original_queue')
+            delattr(self, '_selected_indices')
+            
+            # Update UI
+            self.update_queue_status()
+            self.update_item_selection_list()
+            self.display_current_item()
+        
         # Show completion message
         messagebox.showinfo("Processing Complete", final_message)
     
@@ -1693,6 +1882,39 @@ For item specifics, use a format like "Brand: Apple" with each item specific on 
         
         # Log
         self.log("Stopping processing...")
+    
+    def start_processing_selected(self):
+        """Start processing only selected items."""
+        if not self.selected_items:
+            messagebox.showwarning("No Selection", "Please select at least one item to process.")
+            return
+        
+        # Create a subset queue with only selected items
+        selected_queue = [self.work_queue[i] for i in sorted(self.selected_items)]
+        
+        # Confirm with user
+        response = messagebox.askyesno(
+            "Confirm Processing",
+            f"Process {len(selected_queue)} selected items?"
+        )
+        
+        if response:
+            # Temporarily store original queue
+            self._original_queue = self.work_queue
+            self._original_index = self.current_item_index
+            
+            # Set selected items as the queue
+            self.work_queue = selected_queue
+            self.current_item_index = 0
+            
+            # Start processing
+            self.start_processing()
+            
+            # After processing completes, we'll need to restore the original queue
+            # This would be done in the process_queue method when processing completes
+            self._selected_indices = sorted(self.selected_items)
+        else:
+            self.log("Processing cancelled.")
     
     def reprocess_current(self):
         """Reprocess the current photo."""
@@ -1765,6 +1987,27 @@ For item specifics, use a format like "Brand: Apple" with each item specific on 
         except Exception as e:
             self.log(f"Error launching viewer: {str(e)}")
             messagebox.showerror("Error", f"Failed to launch viewer: {str(e)}")
+    
+    def launch_price_analyzer(self):
+        """Launch the Price Analyzer with current queue file."""
+        if self.queue_file_path and os.path.exists(self.queue_file_path):
+            ToolLauncher.launch_price_analyzer(self.queue_file_path)
+        else:
+            ToolLauncher.launch_price_analyzer()
+    
+    def launch_gallery(self):
+        """Launch the Gallery Creator with current queue file."""
+        if self.queue_file_path and os.path.exists(self.queue_file_path):
+            ToolLauncher.launch_gallery(self.queue_file_path)
+        else:
+            ToolLauncher.launch_gallery()
+    
+    def launch_csv_export(self):
+        """Launch the CSV Export tool with current queue file."""
+        if self.queue_file_path and os.path.exists(self.queue_file_path):
+            ToolLauncher.launch_csv_export(self.queue_file_path)
+        else:
+            ToolLauncher.launch_csv_export()
 
 
 def main():
