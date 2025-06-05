@@ -72,6 +72,7 @@ class EbayLLMProcessor:
         self.processing = False
         self.processing_thread = None  # For background processing
         self.thread_stop_flag = False  # Flag to stop background thread
+        self.auto_pricing = False  # Flag for auto pricing process
         
         # Store the current photo image reference to prevent garbage collection
         self.current_photo_image = None
@@ -320,13 +321,13 @@ class EbayLLMProcessor:
         )
         self.launch_setup_btn.pack(side=tk.LEFT, padx=5)
         
-        # Add button to launch price analyzer
-        self.launch_price_btn = ttk.Button(
+        # Add button for automated batch pricing
+        self.auto_price_btn = ttk.Button(
             self.progress_frame,
-            text="Price Analyzer",
-            command=self.launch_price_analyzer
+            text="Auto Price All",
+            command=self.auto_price_all_items
         )
-        self.launch_price_btn.pack(side=tk.LEFT, padx=5)
+        self.auto_price_btn.pack(side=tk.LEFT, padx=5)
         
         # Generate final descriptions checkbox
         self.generate_final_var = tk.BooleanVar(value=True)
@@ -2016,6 +2017,147 @@ For item specifics, use a format like "Brand: Apple" with each item specific on 
             ToolLauncher.launch_csv_export(self.queue_file_path)
         else:
             ToolLauncher.launch_csv_export()
+    
+    def auto_price_all_items(self):
+        """Automatically price all processed items in the queue using eBay sold listings."""
+        if not self.work_queue:
+            messagebox.showinfo("Info", "No queue loaded. Please load a queue first.")
+            return
+        
+        # Find processed items that don't have prices yet
+        items_to_price = []
+        for i, item in enumerate(self.work_queue):
+            if (item.get("processed", False) and 
+                item.get("title") and 
+                not item.get("start_price")):
+                items_to_price.append((i, item))
+        
+        if not items_to_price:
+            messagebox.showinfo("Info", "No processed items found that need pricing.")
+            return
+        
+        # Confirm with user
+        response = messagebox.askyesno(
+            "Confirm Auto Pricing",
+            f"Automatically price {len(items_to_price)} processed items?\n\n"
+            f"This will search eBay sold listings for each item and apply suggested pricing."
+        )
+        
+        if not response:
+            return
+        
+        # Start batch pricing in background
+        self.auto_pricing = True
+        self.auto_price_btn.config(state=tk.DISABLED, text="Pricing...")
+        
+        # Create background task for pricing
+        self.task_manager.create_and_start_task(
+            name="Auto Price Items",
+            target_function=self._auto_price_task,
+            kwargs={
+                'items_to_price': items_to_price
+            },
+            on_progress=self._update_auto_pricing_progress,
+            on_complete=self._on_auto_pricing_complete,
+            on_error=self._on_auto_pricing_error
+        )
+    
+    def _auto_price_task(self, items_to_price, report_progress, check_cancelled):
+        """Background task to automatically price items."""
+        from ebay_tools.apps.price_analyzer import PriceAnalyzer
+        
+        total_items = len(items_to_price)
+        priced_count = 0
+        analyzer = PriceAnalyzer()
+        
+        for i, (item_index, item) in enumerate(items_to_price):
+            # Check if task was cancelled
+            if check_cancelled():
+                break
+            
+            try:
+                # Extract search terms from item
+                search_terms = analyzer._extract_search_terms(item)
+                
+                # Report progress
+                report_progress(i, total_items, f"Pricing: {item.get('title', 'Unknown')[:50]}...")
+                
+                # Analyze prices
+                results = analyzer.analyze_item_pricing(search_terms)
+                
+                if results and results.get("success"):
+                    # Apply the suggested price
+                    suggested_price = results["suggested_price"]
+                    
+                    # Update item with pricing info
+                    item["start_price"] = suggested_price
+                    item["auto_priced"] = True
+                    item["auto_priced_at"] = datetime.now().isoformat()
+                    item["pricing_data"] = {
+                        "suggested_price": suggested_price,
+                        "search_terms": search_terms,
+                        "price_analysis": results.get("price_analysis", {}),
+                        "sold_items_count": len(results.get("sold_items", []))
+                    }
+                    
+                    priced_count += 1
+                    self.log(f"Auto-priced item {item_index + 1}: ${suggested_price:.2f}")
+                else:
+                    self.log(f"Could not price item {item_index + 1}: {item.get('title', 'Unknown')}")
+                
+                # Auto-save queue after each pricing
+                if self.queue_file_path:
+                    save_queue(self.work_queue, self.queue_file_path)
+                
+                # Delay to avoid rate limiting
+                time.sleep(2)
+                
+            except Exception as e:
+                self.log(f"Error pricing item {item_index + 1}: {str(e)}")
+                continue
+        
+        return {
+            "total": total_items,
+            "priced": priced_count
+        }
+    
+    def _update_auto_pricing_progress(self, current, total, message):
+        """Update progress during auto pricing."""
+        progress_pct = (current / total) * 100 if total > 0 else 0
+        self.progress_bar["value"] = progress_pct
+        self.progress_label.config(text=f"Auto Pricing {current}/{total}")
+        self.time_remaining_label.config(text=message)
+    
+    def _on_auto_pricing_complete(self, result):
+        """Handle completion of auto pricing."""
+        self.auto_pricing = False
+        
+        # Update UI
+        self.auto_price_btn.config(state=tk.NORMAL, text="Auto Price All")
+        self.progress_label.config(text="Auto pricing complete")
+        self.time_remaining_label.config(text="")
+        
+        # Show results
+        final_message = f"Auto pricing completed: {result['priced']}/{result['total']} items priced"
+        self.log(final_message)
+        messagebox.showinfo("Auto Pricing Complete", final_message)
+        
+        # Update display
+        self.update_queue_status()
+        self.display_current_item()
+    
+    def _on_auto_pricing_error(self, error):
+        """Handle error in auto pricing."""
+        self.auto_pricing = False
+        
+        # Update UI
+        self.auto_price_btn.config(state=tk.NORMAL, text="Auto Price All")
+        self.progress_label.config(text=f"Auto pricing error: {str(error)}")
+        self.time_remaining_label.config(text="")
+        
+        # Log and show error
+        self.log(f"Auto pricing error: {str(error)}")
+        messagebox.showerror("Auto Pricing Error", f"An error occurred during auto pricing: {str(error)}")
 
 
 def main():
