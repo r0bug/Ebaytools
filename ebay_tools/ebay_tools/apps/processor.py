@@ -2155,7 +2155,7 @@ For item specifics, use a format like "Brand: Apple" with each item specific on 
                 
                 # Analyze prices
                 logger.info(f"Starting price analysis for: {search_terms}")
-                results = analyzer.analyze_item_pricing(search_terms)
+                results = analyzer.analyze_item(search_terms)
                 logger.info(f"Price analysis results: {results}")
                 
                 if results and results.get("success"):

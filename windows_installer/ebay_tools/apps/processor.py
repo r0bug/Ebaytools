@@ -2142,7 +2142,7 @@ For item specifics, use a format like "Brand: Apple" with each item specific on 
                 report_progress(i, total_items, f"Pricing: {item.get('title', 'Unknown')[:50]}...")
                 
                 # Analyze prices
-                results = analyzer.analyze_item_pricing(search_terms)
+                results = analyzer.analyze_item(search_terms)
                 
                 if results and results.get("success"):
                     # Apply the suggested price
