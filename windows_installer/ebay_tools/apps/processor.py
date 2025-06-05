@@ -320,6 +320,14 @@ class EbayLLMProcessor:
         )
         self.launch_setup_btn.pack(side=tk.LEFT, padx=5)
         
+        # Add button to launch price analyzer
+        self.launch_price_btn = ttk.Button(
+            self.progress_frame,
+            text="Price Analyzer",
+            command=self.launch_price_analyzer
+        )
+        self.launch_price_btn.pack(side=tk.LEFT, padx=5)
+        
         # Generate final descriptions checkbox
         self.generate_final_var = tk.BooleanVar(value=True)
         self.generate_final_check = ttk.Checkbutton(
