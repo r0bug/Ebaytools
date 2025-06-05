@@ -91,13 +91,29 @@ class PriceAnalyzer:
         
         # Get sold items
         sold_items = self._fetch_sold_items(search_terms, limit)
+        current_items = []
         
         if not sold_items or len(sold_items) < self.config["min_results"]:
+            # If no sold items found, get current listings for reference
+            current_items = self._fetch_current_listings(search_terms, limit)
+            
+            if not current_items:
+                return {
+                    "success": False,
+                    "message": f"No sold items found (needed {self.config['min_results']}, found {len(sold_items)}) and no current listings available",
+                    "search_terms": search_terms,
+                    "sold_items": sold_items,
+                    "current_items": current_items
+                }
+            
+            # Return result with current items but no pricing suggestion
             return {
                 "success": False,
-                "message": f"Not enough sold items found (needed {self.config['min_results']}, found {len(sold_items)})",
+                "message": f"No sold items found for pricing analysis. Showing {len(current_items)} current listings for reference.",
                 "search_terms": search_terms,
-                "sold_items": sold_items
+                "sold_items": sold_items,
+                "current_items": current_items,
+                "requires_manual_pricing": True
             }
             
         # Analyze prices
@@ -111,6 +127,7 @@ class PriceAnalyzer:
             "success": True,
             "search_terms": search_terms,
             "sold_items": sold_items,
+            "current_items": current_items,
             "price_analysis": price_analysis,
             "suggested_price": suggested_price,
             "markup_percent": markup,
@@ -178,6 +195,45 @@ class PriceAnalyzer:
         # In a real implementation, replace this with actual eBay API or web scraping code
         sold_items = simulate_sold_items(search_terms, limit)
         return sold_items
+
+    def _fetch_current_listings(self, search_terms, limit=10):
+        """
+        Fetch current active listings from eBay when no sold items found.
+        
+        In a real implementation, this would use the eBay API or scrape current listings.
+        For demo purposes, we'll generate simulated data.
+        """
+        def simulate_current_listings(search_terms, count=10):
+            """Generate simulated current listings for demonstration."""
+            base_price = random.uniform(25, 250)
+            variation = base_price * 0.4  # 40% variation for active listings
+            
+            current_items = []
+            for i in range(count):
+                # Simulate price with some variation
+                price = max(0.99, base_price + random.uniform(-variation, variation))
+                
+                # Random listing date within the past 30 days
+                days_ago = random.randint(1, 30)
+                list_date = datetime.now() - timedelta(days=days_ago)
+                
+                item = {
+                    "title": f"{search_terms} - Current Listing {i+1}",
+                    "price": round(price, 2),
+                    "shipping": round(random.uniform(0, 20), 2),
+                    "list_date": list_date.strftime("%Y-%m-%d"),
+                    "url": f"https://www.ebay.com/itm/{random.randint(100000000, 999999999)}",
+                    "condition": random.choice(["New", "Used", "Open box", "Refurbished"]),
+                    "item_id": f"{random.randint(100000000, 999999999)}",
+                    "watchers": random.randint(0, 15),
+                    "views": random.randint(10, 200)
+                }
+                current_items.append(item)
+                
+            return current_items
+            
+        current_items = simulate_current_listings(search_terms, limit)
+        return current_items
     
     def _analyze_prices(self, sold_items):
         """Analyze prices from sold items."""
@@ -247,6 +303,8 @@ class PriceAnalyzerGUI(tk.Toplevel):
             
         self.markup_var = tk.StringVar(value=str(self.analyzer.config["default_markup"]))
         self.sample_limit_var = tk.StringVar(value=str(self.analyzer.config["max_results"]))
+        self.final_price_var = tk.StringVar()
+        self.price_approved = False
         
         # Create UI
         self._create_widgets()
@@ -364,7 +422,7 @@ class PriceAnalyzerGUI(tk.Toplevel):
         threading.Thread(target=run_analysis).start()
         
     def _display_results(self, results):
-        """Display price analysis results."""
+        """Display price analysis results with enhanced approval workflow."""
         self.results = results
         
         # Clear results frame
@@ -392,68 +450,230 @@ class PriceAnalyzerGUI(tk.Toplevel):
         canvas.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
         
-        # Display results
+        # Handle different result types
         if not results["success"]:
-            ttk.Label(
-                scrollable_frame, 
-                text=f"Analysis failed: {results['message']}",
-                font=("Segoe UI", 10, "italic"),
-                foreground="red"
-            ).pack(fill=tk.X, padx=10, pady=5)
+            if "requires_manual_pricing" in results and results["requires_manual_pricing"]:
+                self._display_manual_pricing_mode(scrollable_frame, results)
+            else:
+                ttk.Label(
+                    scrollable_frame, 
+                    text=f"Analysis failed: {results['message']}",
+                    font=("Segoe UI", 10, "italic"),
+                    foreground="red"
+                ).pack(fill=tk.X, padx=10, pady=5)
             return
             
-        # Summary section
-        summary_frame = ttk.LabelFrame(scrollable_frame, text="Price Summary")
-        summary_frame.pack(fill=tk.X, padx=10, pady=5)
+        # Display successful analysis with sold items
+        self._display_successful_analysis(scrollable_frame, results)
+
+    def _display_manual_pricing_mode(self, parent, results):
+        """Display current listings when no sold items found."""
+        # Message frame
+        message_frame = ttk.LabelFrame(parent, text="⚠️ No Sold Items Found")
+        message_frame.pack(fill=tk.X, padx=10, pady=5)
         
-        analysis = results["price_analysis"]
-        
-        # Display statistics
-        stats_text = f"Found {analysis['count']} sold items\n"
-        stats_text += f"Price Range: ${analysis['min']:.2f} - ${analysis['max']:.2f}\n"
-        stats_text += f"Average Price: ${analysis['mean']:.2f}\n"
-        stats_text += f"Median Price: ${analysis['median']:.2f}\n"
-        
-        if "stdev" in analysis and analysis["stdev"] > 0:
-            stats_text += f"Standard Deviation: ${analysis['stdev']:.2f}"
-            
         ttk.Label(
-            summary_frame, 
-            text=stats_text,
-            justify=tk.LEFT,
+            message_frame,
+            text=results["message"],
+            font=("Segoe UI", 10),
+            foreground="orange"
+        ).pack(fill=tk.X, padx=10, pady=5)
+        
+        # Manual pricing frame
+        pricing_frame = ttk.LabelFrame(parent, text="💡 Manual Price Entry")
+        pricing_frame.pack(fill=tk.X, padx=10, pady=5)
+        
+        ttk.Label(
+            pricing_frame,
+            text="Based on current market listings below, enter your price:",
             font=("Segoe UI", 10)
         ).pack(fill=tk.X, padx=10, pady=5)
         
-        # Suggested price (highlighted)
-        suggested_frame = ttk.Frame(summary_frame)
-        suggested_frame.pack(fill=tk.X, padx=10, pady=10)
+        price_entry_frame = ttk.Frame(pricing_frame)
+        price_entry_frame.pack(fill=tk.X, padx=10, pady=5)
         
-        ttk.Label(
-            suggested_frame, 
-            text="Suggested Price:",
-            font=("Segoe UI", 12, "bold")
-        ).pack(side=tk.LEFT, padx=5)
+        ttk.Label(price_entry_frame, text="Price: $", font=("Segoe UI", 12, "bold")).pack(side=tk.LEFT, padx=5)
+        price_entry = ttk.Entry(price_entry_frame, textvariable=self.final_price_var, width=10, font=("Segoe UI", 12))
+        price_entry.pack(side=tk.LEFT, padx=5)
         
-        ttk.Label(
-            suggested_frame, 
-            text=f"${results['suggested_price']:.2f}",
-            font=("Segoe UI", 14, "bold"),
-            foreground="green"
-        ).pack(side=tk.LEFT, padx=5)
+        def validate_price():
+            try:
+                price = float(self.final_price_var.get())
+                if price > 0:
+                    self.price_approved = True
+                    self.apply_button.configure(state=tk.NORMAL)
+                else:
+                    self.apply_button.configure(state=tk.DISABLED)
+            except ValueError:
+                self.apply_button.configure(state=tk.DISABLED)
         
+        self.final_price_var.trace('w', lambda *args: validate_price())
+        
+        # Current listings table
+        if "current_items" in results and results["current_items"]:
+            self._display_current_listings(parent, results["current_items"])
+
+    def _display_current_listings(self, parent, current_items):
+        """Display current active listings for reference."""
+        listings_frame = ttk.LabelFrame(parent, text="📊 Current Market Listings (Reference)")
+        listings_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
+        
+        # Calculate price statistics for reference
+        prices = [item["price"] + item["shipping"] for item in current_items]
+        if prices:
+            min_price = min(prices)
+            max_price = max(prices)
+            avg_price = sum(prices) / len(prices)
+            
+            stats_text = f"Current listings: {len(current_items)} • "
+            stats_text += f"Price range: ${min_price:.2f} - ${max_price:.2f} • "
+            stats_text += f"Average: ${avg_price:.2f}"
+            
+            ttk.Label(
+                listings_frame,
+                text=stats_text,
+                font=("Segoe UI", 9, "italic")
+            ).pack(fill=tk.X, padx=10, pady=5)
+        
+        # Create table for current listings
+        columns = ("title", "price", "shipping", "total", "condition", "date", "watchers", "views")
+        tree = ttk.Treeview(listings_frame, columns=columns, show="headings", height=8)
+        
+        # Define headings
+        tree.heading("title", text="Item Title")
+        tree.heading("price", text="Price")
+        tree.heading("shipping", text="Shipping")
+        tree.heading("total", text="Total")
+        tree.heading("condition", text="Condition")
+        tree.heading("date", text="Listed")
+        tree.heading("watchers", text="Watchers")
+        tree.heading("views", text="Views")
+        
+        # Define columns
+        tree.column("title", width=200)
+        tree.column("price", width=60, anchor=tk.E)
+        tree.column("shipping", width=60, anchor=tk.E)
+        tree.column("total", width=60, anchor=tk.E)
+        tree.column("condition", width=80)
+        tree.column("date", width=80)
+        tree.column("watchers", width=60, anchor=tk.E)
+        tree.column("views", width=60, anchor=tk.E)
+        
+        # Add scrollbar
+        yscrollbar = ttk.Scrollbar(listings_frame, orient="vertical", command=tree.yview)
+        tree.configure(yscrollcommand=yscrollbar.set)
+        
+        # Add items to table
+        for item in current_items:
+            total = item["price"] + item["shipping"]
+            tree.insert("", tk.END, values=(
+                item["title"],
+                f"${item['price']:.2f}",
+                f"${item['shipping']:.2f}",
+                f"${total:.2f}",
+                item["condition"],
+                item["list_date"],
+                item["watchers"],
+                item["views"]
+            ))
+            
+        # Pack tree and scrollbar
+        tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        yscrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+    def _display_successful_analysis(self, parent, results):
+        """Display successful price analysis with sold items."""
+        analysis = results["price_analysis"]
+        
+        # Price calculation breakdown
+        calc_frame = ttk.LabelFrame(parent, text="🧮 Price Calculation Breakdown")
+        calc_frame.pack(fill=tk.X, padx=10, pady=5)
+        
+        # Step-by-step calculation
+        steps_frame = ttk.Frame(calc_frame)
+        steps_frame.pack(fill=tk.X, padx=10, pady=5)
+        
+        # Step 1: Base price (median)
+        step1_frame = ttk.Frame(steps_frame)
+        step1_frame.pack(fill=tk.X, pady=2)
+        ttk.Label(step1_frame, text="1. Median price from sold items:", font=("Segoe UI", 10)).pack(side=tk.LEFT)
+        ttk.Label(step1_frame, text=f"${analysis['median']:.2f}", font=("Segoe UI", 10, "bold")).pack(side=tk.RIGHT)
+        
+        # Step 2: Markup calculation
+        markup_amount = analysis['median'] * (results['markup_percent'] / 100)
+        step2_frame = ttk.Frame(steps_frame)
+        step2_frame.pack(fill=tk.X, pady=2)
+        ttk.Label(step2_frame, text=f"2. Markup ({results['markup_percent']}%):", font=("Segoe UI", 10)).pack(side=tk.LEFT)
+        ttk.Label(step2_frame, text=f"+${markup_amount:.2f}", font=("Segoe UI", 10, "bold")).pack(side=tk.RIGHT)
+        
+        # Step 3: Final suggested price
+        ttk.Separator(steps_frame, orient="horizontal").pack(fill=tk.X, pady=5)
+        step3_frame = ttk.Frame(steps_frame)
+        step3_frame.pack(fill=tk.X, pady=2)
+        ttk.Label(step3_frame, text="3. Suggested price:", font=("Segoe UI", 12, "bold")).pack(side=tk.LEFT)
+        ttk.Label(step3_frame, text=f"${results['suggested_price']:.2f}", font=("Segoe UI", 12, "bold"), foreground="green").pack(side=tk.RIGHT)
+        
+        # Price approval section
+        approval_frame = ttk.LabelFrame(parent, text="✅ Price Approval")
+        approval_frame.pack(fill=tk.X, padx=10, pady=5)
+        
+        # Set initial value
+        self.final_price_var.set(f"{results['suggested_price']:.2f}")
+        
+        price_approval_frame = ttk.Frame(approval_frame)
+        price_approval_frame.pack(fill=tk.X, padx=10, pady=10)
+        
+        ttk.Label(price_approval_frame, text="Final Price: $", font=("Segoe UI", 12, "bold")).pack(side=tk.LEFT, padx=5)
+        price_entry = ttk.Entry(price_approval_frame, textvariable=self.final_price_var, width=10, font=("Segoe UI", 12))
+        price_entry.pack(side=tk.LEFT, padx=5)
+        
+        ttk.Button(
+            price_approval_frame,
+            text="Use Suggested",
+            command=lambda: self.final_price_var.set(f"{results['suggested_price']:.2f}")
+        ).pack(side=tk.LEFT, padx=10)
+        
+        def validate_and_approve():
+            try:
+                price = float(self.final_price_var.get())
+                if price > 0:
+                    self.price_approved = True
+                    self.apply_button.configure(state=tk.NORMAL, text=f"Apply ${price:.2f}")
+                    # Update results with final price
+                    self.results["final_price"] = price
+                else:
+                    self.apply_button.configure(state=tk.DISABLED, text="Apply Price")
+            except ValueError:
+                self.apply_button.configure(state=tk.DISABLED, text="Apply Price")
+        
+        self.final_price_var.trace('w', lambda *args: validate_and_approve())
+        
+        # Statistics summary
+        stats_frame = ttk.LabelFrame(parent, text="📈 Market Analysis Summary")
+        stats_frame.pack(fill=tk.X, padx=10, pady=5)
+        
+        stats_text = f"Analyzed {analysis['count']} sold items • "
+        stats_text += f"Range: ${analysis['min']:.2f} - ${analysis['max']:.2f} • "
+        stats_text += f"Average: ${analysis['mean']:.2f} • "
+        stats_text += f"Median: ${analysis['median']:.2f}"
+        
+        if "stdev" in analysis and analysis["stdev"] > 0:
+            stats_text += f" • Std Dev: ${analysis['stdev']:.2f}"
+            
         ttk.Label(
-            suggested_frame, 
-            text=f"(+{results['markup_percent']}% markup)",
-            font=("Segoe UI", 10)
-        ).pack(side=tk.LEFT, padx=5)
+            stats_frame, 
+            text=stats_text,
+            justify=tk.LEFT,
+            font=("Segoe UI", 9)
+        ).pack(fill=tk.X, padx=10, pady=5)
         
         # Sold items table
-        items_frame = ttk.LabelFrame(scrollable_frame, text="Similar Sold Items")
+        items_frame = ttk.LabelFrame(parent, text="📋 Recent Sold Items")
         items_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
         
         # Create table
         columns = ("title", "price", "shipping", "total", "condition", "date")
-        tree = ttk.Treeview(items_frame, columns=columns, show="headings")
+        tree = ttk.Treeview(items_frame, columns=columns, show="headings", height=10)
         
         # Define headings
         tree.heading("title", text="Item Title")
@@ -491,25 +711,45 @@ class PriceAnalyzerGUI(tk.Toplevel):
         tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         yscrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         
-        # Enable apply button
-        self.apply_button.configure(state=tk.NORMAL)
+        # Initial validation
+        validate_and_approve()
         
     def _apply_price(self):
-        """Apply the suggested price to the item."""
-        if not self.results or not self.results["success"]:
+        """Apply the approved price to the item."""
+        # Get the final price from the entry field
+        try:
+            final_price = float(self.final_price_var.get())
+        except ValueError:
+            messagebox.showerror("Error", "Please enter a valid price")
             return
             
-        suggested_price = self.results["suggested_price"]
+        if final_price <= 0:
+            messagebox.showerror("Error", "Price must be greater than 0")
+            return
+        
+        # Update results with final approved price
+        if self.results:
+            self.results["final_price"] = final_price
+            self.results["user_approved"] = True
+        else:
+            # Manual pricing mode - create minimal results
+            self.results = {
+                "success": True,
+                "final_price": final_price,
+                "user_approved": True,
+                "search_terms": self.search_terms_var.get(),
+                "manual_pricing": True
+            }
         
         if not self.callback:
             # If no callback, just copy to clipboard
             self.clipboard_clear()
-            self.clipboard_append(f"{suggested_price:.2f}")
-            messagebox.showinfo("Price Copied", f"The suggested price ${suggested_price:.2f} has been copied to clipboard")
+            self.clipboard_append(f"{final_price:.2f}")
+            messagebox.showinfo("Price Copied", f"The price ${final_price:.2f} has been copied to clipboard")
         else:
             # Call the callback function with results
             self.callback(self.results)
-            messagebox.showinfo("Price Applied", f"Applied price ${suggested_price:.2f} to item")
+            messagebox.showinfo("Price Applied", f"Applied price ${final_price:.2f} to item")
             
         self.destroy()
     

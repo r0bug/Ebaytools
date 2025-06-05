@@ -296,6 +296,10 @@ class EbayLLMProcessor:
         self.find_next_unprocessed_btn = ttk.Button(item_nav_frame, text="Find Next Unprocessed", command=self.find_next_unprocessed)
         self.find_next_unprocessed_btn.pack(side=tk.LEFT, padx=20)
         
+        # Add button to price current item with enhanced UI
+        self.price_item_btn = ttk.Button(item_nav_frame, text="🏷️ Price Item", command=self.price_current_item)
+        self.price_item_btn.pack(side=tk.LEFT, padx=5)
+        
         # Photo navigation
         photo_nav_frame = ttk.Frame(self.item_frame)
         photo_nav_frame.pack(fill=tk.X, pady=5)
@@ -1337,6 +1341,59 @@ class EbayLLMProcessor:
         self.log("No more unprocessed photos in the queue.")
         return False
     
+    def price_current_item(self):
+        """Open enhanced pricing dialog for the current item."""
+        if not self.work_queue or self.current_item_index < 0 or self.current_item_index >= len(self.work_queue):
+            messagebox.showinfo("No Item", "Please select an item to price.")
+            return
+        
+        current_item = self.work_queue[self.current_item_index]
+        
+        # Import and create the pricing GUI
+        try:
+            from ebay_tools.apps.price_analyzer import PriceAnalyzerGUI
+            
+            def on_price_applied(results):
+                """Callback when price is applied."""
+                if results and results.get("final_price"):
+                    final_price = results["final_price"]
+                    
+                    # Update the item with pricing information
+                    current_item["start_price"] = final_price
+                    current_item["manually_priced"] = True
+                    current_item["manually_priced_at"] = datetime.now().isoformat()
+                    current_item["pricing_data"] = {
+                        "final_price": final_price,
+                        "suggested_price": results.get("suggested_price"),
+                        "user_approved": results.get("user_approved", True),
+                        "search_terms": results.get("search_terms", ""),
+                        "price_analysis": results.get("price_analysis", {}),
+                        "sold_items_count": len(results.get("sold_items", [])),
+                        "current_items_count": len(results.get("current_items", [])),
+                        "manual_pricing": results.get("manual_pricing", False)
+                    }
+                    
+                    # Auto-save the queue
+                    if self.queue_file_path:
+                        save_queue(self.work_queue, self.queue_file_path)
+                        self.log("Queue auto-saved with manual pricing")
+                    
+                    # Update the display
+                    self.display_current_item()
+                    self.log(f"Manually priced item {self.current_item_index + 1}: ${final_price:.2f}")
+            
+            # Create and show the pricing dialog
+            pricing_dialog = PriceAnalyzerGUI(
+                parent=self.root,
+                item_data=current_item,
+                callback=on_price_applied
+            )
+            
+        except ImportError as e:
+            messagebox.showerror("Error", f"Could not load price analyzer: {e}")
+        except Exception as e:
+            messagebox.showerror("Error", f"Error opening pricing dialog: {e}")
+    
     def build_photo_prompt(self, item, photo_data):
         """Build an enhanced prompt for photo processing."""
         # Extract item details
@@ -2159,24 +2216,28 @@ For item specifics, use a format like "Brand: Apple" with each item specific on 
                 logger.info(f"Price analysis results: {results}")
                 
                 if results and results.get("success"):
-                    # Apply the suggested price
+                    # Use final_price if available (from user approval), otherwise use suggested_price
+                    final_price = results.get("final_price", results["suggested_price"])
                     suggested_price = results["suggested_price"]
-                    logger.info(f"Successfully got suggested price: ${suggested_price:.2f}")
+                    logger.info(f"Successfully got price: ${final_price:.2f} (suggested: ${suggested_price:.2f})")
                     
                     # Update item with pricing info
-                    item["start_price"] = suggested_price
+                    item["start_price"] = final_price
                     item["auto_priced"] = True
                     item["auto_priced_at"] = datetime.now().isoformat()
                     item["pricing_data"] = {
+                        "final_price": final_price,
                         "suggested_price": suggested_price,
+                        "user_approved": results.get("user_approved", False),
                         "search_terms": search_terms,
                         "price_analysis": results.get("price_analysis", {}),
-                        "sold_items_count": len(results.get("sold_items", []))
+                        "sold_items_count": len(results.get("sold_items", [])),
+                        "current_items_count": len(results.get("current_items", []))
                     }
                     
                     priced_count += 1
-                    self.log(f"Auto-priced item {item_index + 1}: ${suggested_price:.2f}")
-                    logger.info(f"Successfully priced item {item_index + 1}: ${suggested_price:.2f}")
+                    self.log(f"Auto-priced item {item_index + 1}: ${final_price:.2f}")
+                    logger.info(f"Successfully priced item {item_index + 1}: ${final_price:.2f}")
                 else:
                     logger.warning(f"Price analysis failed for item {item_index + 1}. Results: {results}")
                     self.log(f"Could not price item {item_index + 1}: {item.get('title', 'Unknown')}")
