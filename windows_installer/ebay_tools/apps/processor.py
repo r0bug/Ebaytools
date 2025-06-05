@@ -32,7 +32,14 @@ from ebay_tools.utils.image_utils import open_image_with_orientation, create_thu
 from ebay_tools.utils.file_utils import ensure_directory_exists, safe_load_json, safe_save_json
 from ebay_tools.utils.ui_utils import StatusBar
 from ebay_tools.utils.background_utils import BackgroundTask, BackgroundTaskManager
-from ebay_tools.utils.launcher_utils import ToolLauncher, create_tools_menu
+
+# Optional launcher utils import
+try:
+    from ebay_tools.utils.launcher_utils import ToolLauncher, create_tools_menu
+    LAUNCHER_AVAILABLE = True
+except ImportError:
+    LAUNCHER_AVAILABLE = False
+    print("Warning: launcher_utils not available - some launcher buttons will be disabled")
 
 # Configure logging
 logging.basicConfig(
@@ -314,12 +321,13 @@ class EbayLLMProcessor:
         self.launch_viewer_btn.pack(side=tk.LEFT, padx=5)
         
         # Add button to launch setup
-        self.launch_setup_btn = ttk.Button(
-            self.progress_frame,
-            text="Launch Setup",
-            command=lambda: ToolLauncher.launch_setup()
-        )
-        self.launch_setup_btn.pack(side=tk.LEFT, padx=5)
+        if LAUNCHER_AVAILABLE:
+            self.launch_setup_btn = ttk.Button(
+                self.progress_frame,
+                text="Launch Setup",
+                command=lambda: ToolLauncher.launch_setup()
+            )
+            self.launch_setup_btn.pack(side=tk.LEFT, padx=5)
         
         # Add button for automated batch pricing
         self.auto_price_btn = ttk.Button(
@@ -365,14 +373,16 @@ class EbayLLMProcessor:
         
         # Tools menu
         tools_menu = tk.Menu(menubar, tearoff=0)
-        tools_menu.add_command(label="Launch Setup", command=lambda: ToolLauncher.launch_setup())
+        if LAUNCHER_AVAILABLE:
+            tools_menu.add_command(label="Launch Setup", command=lambda: ToolLauncher.launch_setup())
         tools_menu.add_command(label="Launch Viewer", command=self.launch_viewer)
         tools_menu.add_command(label="Launch Price Analyzer", command=self.launch_price_analyzer)
-        tools_menu.add_command(label="Launch Gallery Creator", command=self.launch_gallery)
-        tools_menu.add_separator()
-        tools_menu.add_command(label="Launch CSV Export", command=self.launch_csv_export)
-        tools_menu.add_command(label="Launch Mobile Import", command=lambda: ToolLauncher.launch_mobile_import())
-        tools_menu.add_command(label="Launch Direct Listing", command=lambda: ToolLauncher.launch_direct_listing())
+        if LAUNCHER_AVAILABLE:
+            tools_menu.add_command(label="Launch Gallery Creator", command=self.launch_gallery)
+            tools_menu.add_separator()
+            tools_menu.add_command(label="Launch CSV Export", command=self.launch_csv_export)
+            tools_menu.add_command(label="Launch Mobile Import", command=lambda: ToolLauncher.launch_mobile_import())
+            tools_menu.add_command(label="Launch Direct Listing", command=lambda: ToolLauncher.launch_direct_listing())
         menubar.add_cascade(label="Tools", menu=tools_menu)
         
         # Help menu
@@ -1999,24 +2009,41 @@ For item specifics, use a format like "Brand: Apple" with each item specific on 
     
     def launch_price_analyzer(self):
         """Launch the Price Analyzer with current queue file."""
-        if self.queue_file_path and os.path.exists(self.queue_file_path):
-            ToolLauncher.launch_price_analyzer(self.queue_file_path)
+        if LAUNCHER_AVAILABLE:
+            if self.queue_file_path and os.path.exists(self.queue_file_path):
+                ToolLauncher.launch_price_analyzer(self.queue_file_path)
+            else:
+                ToolLauncher.launch_price_analyzer()
         else:
-            ToolLauncher.launch_price_analyzer()
+            # Direct launch fallback
+            try:
+                import subprocess
+                import sys
+                python_exe = sys.executable
+                script_path = os.path.join(os.path.dirname(__file__), "price_analyzer.py")
+                subprocess.Popen([python_exe, script_path])
+            except Exception as e:
+                messagebox.showerror("Error", f"Could not launch Price Analyzer: {str(e)}")
     
     def launch_gallery(self):
         """Launch the Gallery Creator with current queue file."""
-        if self.queue_file_path and os.path.exists(self.queue_file_path):
-            ToolLauncher.launch_gallery(self.queue_file_path)
+        if LAUNCHER_AVAILABLE:
+            if self.queue_file_path and os.path.exists(self.queue_file_path):
+                ToolLauncher.launch_gallery(self.queue_file_path)
+            else:
+                ToolLauncher.launch_gallery()
         else:
-            ToolLauncher.launch_gallery()
+            messagebox.showinfo("Info", "Gallery Creator launcher not available in this version.")
     
     def launch_csv_export(self):
         """Launch the CSV Export tool with current queue file."""
-        if self.queue_file_path and os.path.exists(self.queue_file_path):
-            ToolLauncher.launch_csv_export(self.queue_file_path)
+        if LAUNCHER_AVAILABLE:
+            if self.queue_file_path and os.path.exists(self.queue_file_path):
+                ToolLauncher.launch_csv_export(self.queue_file_path)
+            else:
+                ToolLauncher.launch_csv_export()
         else:
-            ToolLauncher.launch_csv_export()
+            messagebox.showinfo("Info", "CSV Export launcher not available in this version.")
     
     def auto_price_all_items(self):
         """Automatically price all processed items in the queue using eBay sold listings."""
