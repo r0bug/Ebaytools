@@ -19,6 +19,7 @@ from datetime import datetime
 import uuid
 import subprocess
 import threading
+import traceback
 from typing import Dict, List, Any, Optional, Callable, Union
 
 # Import core modules
@@ -41,16 +42,32 @@ except ImportError:
     LAUNCHER_AVAILABLE = False
     print("Warning: launcher_utils not available - some launcher buttons will be disabled")
 
-# Configure logging
+# Configure logging with more detailed output
+import logging.handlers
+
+# Create logs directory if it doesn't exist
+import os
+log_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logs")
+os.makedirs(log_dir, exist_ok=True)
+
+# Configure detailed logging
+log_file = os.path.join(log_dir, "ebay_processor.log")
 logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s",
+    level=logging.DEBUG,  # Changed to DEBUG for more detail
+    format="%(asctime)s - %(name)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s",
     handlers=[
-        logging.FileHandler("ebay_processor.log"),
+        logging.FileHandler(log_file),
         logging.StreamHandler()
-    ]
+    ],
+    force=True  # Override any existing logging config
 )
 logger = logging.getLogger(__name__)
+
+# Log startup
+logger.info("="*50)
+logger.info("eBay Processor starting up...")
+logger.info(f"Log file location: {log_file}")
+logger.info("="*50)
 
 class EbayLLMProcessor:
     """
@@ -2079,7 +2096,10 @@ For item specifics, use a format like "Brand: Apple" with each item specific on 
     
     def auto_price_all_items(self):
         """Automatically price all processed items in the queue using eBay sold listings."""
+        logger.info("Auto Price All button clicked")
+        
         if not self.work_queue:
+            logger.warning("No queue loaded for auto pricing")
             messagebox.showinfo("Info", "No queue loaded. Please load a queue first.")
             return
         
@@ -2123,11 +2143,28 @@ For item specifics, use a format like "Brand: Apple" with each item specific on 
     
     def _auto_price_task(self, items_to_price, report_progress, check_cancelled):
         """Background task to automatically price items."""
-        from ebay_tools.apps.price_analyzer import PriceAnalyzer
+        logger.info(f"Starting auto pricing task for {len(items_to_price)} items")
+        
+        try:
+            from ebay_tools.apps.price_analyzer import PriceAnalyzer
+            logger.info("Successfully imported PriceAnalyzer")
+        except Exception as e:
+            logger.error(f"Failed to import PriceAnalyzer: {e}")
+            import traceback
+            logger.error(f"Import traceback: {traceback.format_exc()}")
+            raise
         
         total_items = len(items_to_price)
         priced_count = 0
-        analyzer = PriceAnalyzer()
+        
+        try:
+            analyzer = PriceAnalyzer()
+            logger.info("Successfully created PriceAnalyzer instance")
+        except Exception as e:
+            logger.error(f"Failed to create PriceAnalyzer instance: {e}")
+            import traceback
+            logger.error(f"Instance creation traceback: {traceback.format_exc()}")
+            raise
         
         for i, (item_index, item) in enumerate(items_to_price):
             # Check if task was cancelled
@@ -2135,14 +2172,22 @@ For item specifics, use a format like "Brand: Apple" with each item specific on 
                 break
             
             try:
+                logger.info(f"Processing item {i+1}/{total_items}: {item.get('title', 'Unknown')[:50]}")
+                
                 # Extract search terms from item
+                logger.debug(f"Extracting search terms for item {item_index}")
                 search_terms = analyzer._extract_search_terms(item)
+                logger.info(f"Search terms extracted: {search_terms}")
                 
                 # Report progress
                 report_progress(i, total_items, f"Pricing: {item.get('title', 'Unknown')[:50]}...")
                 
                 # Analyze prices
+                logger.info(f"Starting price analysis for: {search_terms}")
+                logger.info(f"Analyzer object type: {type(analyzer)}")
+                logger.info(f"Available methods on analyzer: {[method for method in dir(analyzer) if 'analyze' in method.lower()]}")
                 results = analyzer.analyze_item(search_terms)
+                logger.info(f"Price analysis results: {results}")
                 
                 if results and results.get("success"):
                     # Apply the suggested price
