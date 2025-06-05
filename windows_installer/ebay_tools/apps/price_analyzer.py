@@ -259,9 +259,13 @@ class PriceAnalyzerGUI(tk.Toplevel):
         y = (self.winfo_screenheight() // 2) - (height // 2)
         self.geometry(f'+{x}+{y}')
         
-        # Make modal
-        self.transient(parent)
-        self.grab_set()
+        # Make modal only if parent is visible
+        if parent and parent.winfo_viewable():
+            self.transient(parent)
+            self.grab_set()
+        else:
+            # For standalone use, make it a normal window
+            self.protocol("WM_DELETE_WINDOW", self._on_close)
         
     def _create_widgets(self):
         """Create GUI widgets."""
@@ -508,6 +512,12 @@ class PriceAnalyzerGUI(tk.Toplevel):
             messagebox.showinfo("Price Applied", f"Applied price ${suggested_price:.2f} to item")
             
         self.destroy()
+    
+    def _on_close(self):
+        """Handle window close event for standalone use."""
+        self.destroy()
+        if self.parent:
+            self.parent.quit()
 
 
 def main():
@@ -518,6 +528,11 @@ def main():
     
     # Create and show the analyzer GUI
     analyzer_gui = PriceAnalyzerGUI(root)
+    
+    # Ensure the window is visible and on top
+    analyzer_gui.deiconify()
+    analyzer_gui.lift()
+    analyzer_gui.focus_force()
     
     # Wait for the window to be closed
     root.wait_window(analyzer_gui)
