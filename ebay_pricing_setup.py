@@ -183,10 +183,10 @@ def analyze_item_pricing_complete(self, item):
         
         # Perform analysis
         self.log(f"Analyzing pricing for: {search_query}")
-        analysis = analyzer.analyze_item_pricing(
+        analysis = analyzer.analyze_item(
             search_terms=search_query,
             markup_percent=15,  # Default 15% markup
-            max_items=20
+            sample_limit=20
         )
         
         # Update item with pricing data
