@@ -865,11 +865,23 @@ class PriceAnalyzerGUI(tk.Toplevel):
             info_text = "ℹ️  Demo mode: Simulated data shown. Links open eBay sold listings search for verification."
             info_color = "gray"
         
+        # API status information
+        api_status_frame = ttk.Frame(instruction_frame)
+        api_status_frame.pack(fill=tk.X, pady=(5,0))
+        
         ttk.Label(
-            instruction_frame, 
+            api_status_frame, 
             text=info_text,
             font=("Segoe UI", 8),
             foreground=info_color
+        ).pack(anchor=tk.W)
+        
+        # Show API limitation notice
+        ttk.Label(
+            api_status_frame,
+            text="⚠️  eBay API Update (2024-2025): findCompletedItems deprecated Feb 2025. Marketplace Insights requires business approval.",
+            font=("Segoe UI", 7),
+            foreground="orange"
         ).pack(anchor=tk.W, pady=(2,0))
         
         # Initial validation

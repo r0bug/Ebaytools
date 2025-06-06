@@ -177,67 +177,107 @@ class PriceAnalyzer:
     
     def _fetch_real_sold_items(self, search_terms, limit=10):
         """
-        Fetch real sold items using unofficial eBay sold items API.
+        Attempt to fetch real sold items data.
         
-        Uses the API mentioned: https://ebay-sold-items-api.herokuapp.com/findCompletedItems
+        As of 2024-2025, eBay's API landscape for sold listings has become highly restricted:
+        - findCompletedItems API: Decommissioned February 5, 2025
+        - Marketplace Insights API: Requires business partnership approval
+        - Third-party APIs: Often unreliable or prohibited by eBay ToS
+        
+        Current options for real data:
+        1. Official Marketplace Insights API (requires eBay business approval)
+        2. eBay Terapeak (requires seller account)
+        3. Third-party services like SerpApi (paid, legal)
+        4. Manual verification via eBay sold listings search
+        """
+        
+        # Try SerpApi integration (example implementation)
+        try:
+            return self._try_serpapi_integration(search_terms, limit)
+        except Exception as e:
+            print(f"SerpApi integration not available: {e}")
+        
+        # Try other legitimate APIs here
+        # Note: Most free unofficial APIs violate eBay ToS or are unreliable
+        
+        print("Real-time sold data APIs require business partnerships or paid services.")
+        print("Using demo mode with manual verification links.")
+        return None
+    
+    def _try_serpapi_integration(self, search_terms, limit=10):
+        """
+        Example implementation for SerpApi eBay sold listings integration.
+        
+        SerpApi is a legitimate third-party service that provides eBay data access.
+        Requires API key and paid subscription beyond free tier.
+        See: https://serpapi.com/ebay-search-api
         """
         try:
             import requests
-            import json
-            from urllib.parse import quote
+            import os
             
-            # API endpoint for sold items
-            url = "https://ebay-sold-items-api.herokuapp.com/findCompletedItems"
+            # Check for SerpApi key (user would need to set this)
+            api_key = os.environ.get('SERPAPI_KEY')
+            if not api_key:
+                print("SerpApi integration requires SERPAPI_KEY environment variable")
+                return None
             
-            # Prepare payload
-            payload = {
-                "keywords": search_terms,
-                "excluded_keywords": "broken damaged parts repair for parts only read description",
-                "max_search_results": str(min(limit, 100)),  # API limit
-                "category_id": "",  # Empty for all categories
-                "remove_outliers": True,
-                "site_id": "0"  # US site
+            # SerpApi eBay endpoint
+            url = "https://serpapi.com/search"
+            
+            params = {
+                'engine': 'ebay',
+                'ebay_domain': 'ebay.com',
+                '_nkw': search_terms,
+                'LH_Sold': '1',
+                'LH_Complete': '1',
+                'api_key': api_key,
+                'num': min(limit, 100)
             }
             
-            headers = {
-                'Content-Type': 'application/json',
-                'User-Agent': 'eBay Tools Price Analyzer'
-            }
-            
-            # Make request with timeout
-            response = requests.post(url, headers=headers, data=json.dumps(payload), timeout=10)
+            response = requests.get(url, params=params, timeout=10)
             
             if response.status_code == 200:
                 data = response.json()
                 
-                if 'items' in data and data['items']:
+                if 'organic_results' in data:
                     sold_items = []
-                    for item in data['items'][:limit]:
-                        # Convert API response to our format
+                    for item in data['organic_results'][:limit]:
+                        # Convert SerpApi response to our format
                         sold_item = {
                             "title": item.get('title', 'Unknown Item'),
-                            "price": float(item.get('price', {}).get('value', 0)),
-                            "shipping": float(item.get('shippingCost', {}).get('value', 0)),
-                            "sold_date": item.get('endTime', '').split('T')[0] if 'endTime' in item else '',
-                            "url": item.get('viewItemURL', ''),
-                            "condition": item.get('condition', {}).get('conditionDisplayName', 'Unknown'),
-                            "item_id": item.get('itemId', '')
+                            "price": self._parse_price(item.get('price', '')),
+                            "shipping": self._parse_price(item.get('shipping', '')),
+                            "sold_date": item.get('sold_date', ''),
+                            "url": item.get('link', ''),
+                            "condition": item.get('condition', 'Unknown'),
+                            "item_id": item.get('item_id', '')
                         }
                         sold_items.append(sold_item)
                     
-                    print(f"Successfully fetched {len(sold_items)} real sold items from API")
+                    print(f"Successfully fetched {len(sold_items)} real sold items via SerpApi")
                     return sold_items
-                else:
-                    print("API returned no sold items")
-            else:
-                print(f"API request failed with status {response.status_code}")
-        
+            
+            print(f"SerpApi request failed with status {response.status_code}")
+            return None
+            
         except ImportError:
-            print("requests library not available for real API calls")
+            print("requests library not available for SerpApi integration")
+            return None
         except Exception as e:
-            print(f"Error fetching real sold data: {e}")
-        
-        return None
+            print(f"SerpApi error: {e}")
+            return None
+    
+    def _parse_price(self, price_str):
+        """Parse price string to float."""
+        if not price_str:
+            return 0.0
+        try:
+            # Remove currency symbols and parse
+            cleaned = ''.join(c for c in str(price_str) if c.isdigit() or c == '.')
+            return float(cleaned) if cleaned else 0.0
+        except:
+            return 0.0
     
     def _fetch_sold_items(self, search_terms, limit=10):
         """
@@ -865,11 +905,23 @@ class PriceAnalyzerGUI(tk.Toplevel):
             info_text = "ℹ️  Demo mode: Simulated data shown. Links open eBay sold listings search for verification."
             info_color = "gray"
         
+        # API status information
+        api_status_frame = ttk.Frame(instruction_frame)
+        api_status_frame.pack(fill=tk.X, pady=(5,0))
+        
         ttk.Label(
-            instruction_frame, 
+            api_status_frame, 
             text=info_text,
             font=("Segoe UI", 8),
             foreground=info_color
+        ).pack(anchor=tk.W)
+        
+        # Show API limitation notice
+        ttk.Label(
+            api_status_frame,
+            text="⚠️  eBay API Update (2024-2025): findCompletedItems deprecated Feb 2025. Marketplace Insights requires business approval.",
+            font=("Segoe UI", 7),
+            foreground="orange"
         ).pack(anchor=tk.W, pady=(2,0))
         
         # Initial validation
