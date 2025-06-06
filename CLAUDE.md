@@ -181,9 +181,10 @@ This is an eBay listing management tool suite with photo processing, price analy
 2. **Update ALL installer versions** (`windows_installer/ebay_tools/`)
 3. **Test functionality** in both versions locally 
 4. **Verify all UI elements and features work** in installer versions
-5. **Commit changes** with descriptive message
-6. **Push to GitHub** immediately 
-7. **ONLY THEN** declare feature complete
+5. **UPDATE ALL DOCUMENTATION** (see Documentation Update Requirements below)
+6. **Commit changes** with descriptive message
+7. **Push to GitHub** immediately 
+8. **ONLY THEN** declare feature complete
 
 ### Why This Matters:
 - Users download ZIP files from GitHub, not local changes
@@ -197,9 +198,11 @@ This is an eBay listing management tool suite with photo processing, price analy
 - ❌ **NEVER** say "functionality implemented" without ALL versions updated
 - ❌ **NEVER** say "ready to use" without Windows installer updated
 - ❌ **NEVER** say "complete" without GitHub push of ALL versions
-- ❌ **NEVER** commit main version without updating installer versions  
+- ❌ **NEVER** commit main version without updating installer versions
+- ❌ **NEVER** commit without updating ALL relevant documentation
 - ✅ **ALWAYS** update windows_installer/ directory before committing
 - ✅ **ALWAYS** verify ALL UI elements work in installer versions
+- ✅ **ALWAYS** update README.md and other docs before committing
 - ✅ **ALWAYS** push changes before declaring completion
 - ✅ **ALWAYS** verify changes are on GitHub before user communication
 
@@ -329,6 +332,119 @@ for app in windows_installer/ebay_tools/apps/*.py; do python3 -m py_compile "$ap
 - ✅ **ALWAYS** update existing code when creating new standards
 - ✅ **ALWAYS** verify consistency across ALL applications before committing
 - ✅ **ALWAYS** test that standards work in practice, not just theory
+
+## 📖 DOCUMENTATION UPDATE REQUIREMENTS
+
+**ALL documentation MUST be updated BEFORE committing any changes!**
+
+### 📋 **Documentation Update Checklist:**
+
+#### ✅ **Primary Documentation (ALWAYS Update):**
+1. **README.md** - Main project documentation
+   - Update version number if changed
+   - Add new features to features list
+   - Update installation instructions if installers changed
+   - Update Quick Start if workflow changed
+   - Update Applications section with new functionality
+
+2. **CLAUDE.md** - This development memory file
+   - Document new patterns and standards
+   - Update workflow requirements if changed
+   - Add new enforcement rules
+   - Document lessons learned from issues
+
+3. **Version Number Consistency**
+   - Update `__version__` in `ebay_tools/__init__.py`
+   - Update `__version__` in `windows_installer/ebay_tools/__init__.py`
+   - Ensure README title reflects current version
+   - Verify all About dialogs will show correct version
+
+#### ✅ **Specialized Documentation (Update When Relevant):**
+4. **INSTALLER_README.md** - When installer changes made
+   - Document new installer features
+   - Update usage instructions
+   - Add troubleshooting for new issues
+
+5. **eBay_Tools_User_Manual.md** - When user workflow changes
+   - Document new UI elements (buttons, menus, dialogs)
+   - Update step-by-step instructions
+   - Add screenshots of new features
+
+6. **Feature-Specific READMEs** - When those features change
+   - `GALLERY_README.md` - Gallery creator changes
+   - `MOBILE_INTEGRATION.md` - Mobile app changes
+   - `PRICING_FIX_README.md` - Pricing system changes
+
+### 🔍 **Documentation Verification Commands:**
+
+```bash
+# Check version consistency across all files
+grep -r "__version__" ebay_tools/
+grep -r "v3.0.0\|version 3.0.0\|Version: 3.0.0" *.md
+
+# Check README mentions new features
+grep -i "reset\|pricing\|version display" README.md
+
+# Verify installer documentation is current
+grep -i "install_complete" README.md INSTALLER_README.md
+
+# Check for outdated references
+grep -i "install_dependencies.bat" README.md  # Should be minimal/legacy only
+```
+
+### 🚨 **Critical Documentation Rules:**
+
+#### ❌ **NEVER commit without documentation updates:**
+- Don't add new features without updating README.md
+- Don't change installers without updating installation docs
+- Don't modify workflows without updating user documentation
+- Don't add UI elements without documenting them
+
+#### ✅ **ALWAYS document these changes:**
+- **New Features**: Add to README features list and Quick Start
+- **New UI Elements**: Document in User Manual with screenshots
+- **Installation Changes**: Update README and installer docs
+- **Workflow Changes**: Update all relevant guides
+- **Version Changes**: Update ALL version references
+- **Bug Fixes**: Document in commit but also user-facing docs if relevant
+
+### 📝 **Documentation Standards:**
+
+#### **README.md Standards:**
+- Always show current version in title: "# eBay Tools v3.0.0"
+- Features list must include ALL major current features
+- Installation section must promote latest recommended installers
+- Quick Start must reflect actual current workflow
+- Applications section must be complete and current
+
+#### **User Manual Standards:**
+- Step-by-step instructions must match actual UI
+- Screenshots should show current interface
+- All new buttons/menus must be documented
+- Troubleshooting must address current common issues
+
+#### **Version Documentation Standards:**
+- Version changes must be documented in README "New in vX.X.X"
+- Breaking changes must be clearly documented
+- Migration instructions for major updates
+- Backward compatibility notes when relevant
+
+### 🔄 **Documentation Maintenance Workflow:**
+
+1. **Before Implementing**: Check what docs will need updates
+2. **During Implementation**: Note documentation changes needed
+3. **After Implementation**: Update ALL relevant documentation
+4. **Before Committing**: Verify documentation completeness
+5. **Commit Message**: Mention documentation updates made
+
+### 🎯 **Common Documentation Oversights to Avoid:**
+
+- ❌ Adding new features without updating README
+- ❌ Changing installers without updating installation docs
+- ❌ Adding UI elements without updating user guides
+- ❌ Version bumps without updating version references
+- ❌ Workflow changes without updating Quick Start
+- ❌ Bug fixes that affect user experience without doc updates
 
 ## UI Layout Issues Resolution
 The processor now has a scrollable main window to prevent buttons from going off-screen on high-resolution displays. All UI elements are contained within a scrollable canvas with mouse wheel support.
