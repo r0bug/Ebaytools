@@ -429,10 +429,36 @@ class EbayLLMProcessor:
         help_menu = tk.Menu(menubar, tearoff=0)
         help_menu.add_command(label="Test API Connection", command=self.test_api_connection)
         help_menu.add_separator()
-        help_menu.add_command(label="About", command=lambda: messagebox.showinfo("About", "eBay LLM Photo Processor\nPart of eBay Tools Suite"))
+        help_menu.add_command(label="About", command=self.show_about)
         menubar.add_cascade(label="Help", menu=help_menu)
         
         self.root.config(menu=menubar)
+    
+    def show_about(self):
+        """Show about dialog with version information."""
+        try:
+            from ebay_tools import __version__
+            version = __version__
+        except ImportError:
+            version = "Unknown"
+        
+        about_text = f"""eBay LLM Photo Processor
+Version: {version}
+Part of eBay Tools Suite
+
+Features:
+• Photo processing with LLM APIs
+• Interactive pricing system
+• Processing tags reset functionality
+• Batch processing capabilities
+• Multiple API support
+
+Latest Update: Processing Tags Reset System
+- Individual item reset
+- Type-based reset (photos/items)
+- Global reset functionality"""
+        
+        messagebox.showinfo("About eBay Tools Processor", about_text)
     
     def toggle_api_key_visibility(self):
         """Toggle the visibility of the API key."""
