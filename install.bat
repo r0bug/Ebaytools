@@ -102,7 +102,7 @@ if %errorlevel% neq 0 (
     echo [WARNING] Failed to upgrade pip, continuing...
 )
 
-%PYTHON_CMD% -m pip install -r requirements.txt
+%PYTHON_CMD% -m pip install -r windows_installer\requirements.txt
 if %errorlevel% neq 0 (
     echo [ERROR] Failed to install dependencies!
     echo Please check your internet connection and try again.
