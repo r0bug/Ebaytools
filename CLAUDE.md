@@ -172,6 +172,30 @@ This is an eBay listing management tool suite with photo processing, price analy
 - Setup SSH: `eval "$(ssh-agent -s)" && ssh-add ~/.ssh/ebaytools`
 - Push changes: `git add . && git commit -m "message" && git push`
 
+## 🚨 CRITICAL DEVELOPMENT POLICY 🚨
+
+**NEVER declare functionality "fixed" or "complete" unless changes are pushed to GitHub!**
+
+### Required Workflow:
+1. **Implement changes** in local code
+2. **Test functionality** locally 
+3. **Commit changes** with descriptive message
+4. **Push to GitHub** immediately 
+5. **ONLY THEN** declare feature complete
+
+### Why This Matters:
+- Users download ZIP files from GitHub, not local changes
+- Declaring features "complete" before pushing creates confusion
+- Users expect advertised functionality to be available in downloads
+- GitHub is the single source of truth for releases
+
+### Enforcement Rules:
+- ❌ **NEVER** say "functionality implemented" without GitHub push
+- ❌ **NEVER** say "ready to use" without GitHub push  
+- ❌ **NEVER** say "complete" without GitHub push
+- ✅ **ALWAYS** push changes before declaring completion
+- ✅ **ALWAYS** verify changes are on GitHub before user communication
+
 ## UI Layout Issues Resolution
 The processor now has a scrollable main window to prevent buttons from going off-screen on high-resolution displays. All UI elements are contained within a scrollable canvas with mouse wheel support.
 
