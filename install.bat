@@ -497,4 +497,8 @@ if /i "%OPEN_MANUAL%"=="y" (
 echo.
 echo Thank you for installing eBay Tools!
 echo.
+echo TROUBLESHOOTING:
+echo If you encounter Python path errors, run: diagnose_python.bat
+echo This diagnostic tool will help identify Python installation issues.
+echo.
 pause
