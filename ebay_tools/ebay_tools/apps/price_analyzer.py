@@ -184,7 +184,7 @@ class PriceAnalyzer:
                     "price": round(price, 2),
                     "shipping": round(random.uniform(0, 15), 2),
                     "sold_date": sold_date.strftime("%Y-%m-%d"),
-                    "url": f"https://www.ebay.com/itm/{random.randint(100000000, 999999999)}",
+                    "url": f"https://www.ebay.com/sch/i.html?_nkw={search_terms.replace(' ', '+')}&_sacat=0&_sop=13&LH_Sold=1",
                     "condition": random.choice(["New", "Used", "Open box", "Refurbished"]),
                     "item_id": f"{random.randint(100000000, 999999999)}"
                 }
@@ -672,7 +672,7 @@ class PriceAnalyzerGUI(tk.Toplevel):
         items_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
         
         # Create table
-        columns = ("title", "price", "shipping", "total", "condition", "date")
+        columns = ("title", "price", "shipping", "total", "condition", "date", "url")
         tree = ttk.Treeview(items_frame, columns=columns, show="headings", height=10)
         
         # Define headings
@@ -682,14 +682,16 @@ class PriceAnalyzerGUI(tk.Toplevel):
         tree.heading("total", text="Total")
         tree.heading("condition", text="Condition")
         tree.heading("date", text="Sold Date")
+        tree.heading("url", text="eBay Link")
         
         # Define columns
-        tree.column("title", width=250)
+        tree.column("title", width=200)
         tree.column("price", width=70, anchor=tk.E)
         tree.column("shipping", width=70, anchor=tk.E)
         tree.column("total", width=70, anchor=tk.E)
         tree.column("condition", width=100)
         tree.column("date", width=100)
+        tree.column("url", width=100, anchor=tk.CENTER)
         
         # Add scrollbar
         yscrollbar = ttk.Scrollbar(items_frame, orient="vertical", command=tree.yview)
@@ -698,18 +700,71 @@ class PriceAnalyzerGUI(tk.Toplevel):
         # Add items to table
         for item in results["sold_items"]:
             total = item["price"] + item["shipping"]
+            # Format URL for display
+            url_display = "Click to Open" if item.get("url") else "N/A"
             tree.insert("", tk.END, values=(
                 item["title"],
                 f"${item['price']:.2f}",
                 f"${item['shipping']:.2f}",
                 f"${total:.2f}",
                 item["condition"],
-                item["sold_date"]
+                item["sold_date"],
+                url_display
             ))
             
+        # Add click handler to open URLs
+        def on_item_click(event):
+            """Handle double-click on tree items to open eBay listing URLs."""
+            selection = tree.selection()
+            if selection:
+                # Get the selected item
+                item_id = selection[0]
+                item_values = tree.item(item_id, 'values')
+                
+                # Find the corresponding sold item by matching title and price
+                if item_values:
+                    title = item_values[0]
+                    price_str = item_values[1]
+                    
+                    # Find matching item in results
+                    for sold_item in results["sold_items"]:
+                        if (sold_item["title"] == title and 
+                            f"${sold_item['price']:.2f}" == price_str):
+                            url = sold_item.get("url")
+                            if url:
+                                try:
+                                    import webbrowser
+                                    webbrowser.open(url)
+                                    self.status_bar.update(f"Opened eBay listing: {title}")
+                                except Exception as e:
+                                    messagebox.showerror("Error", f"Failed to open URL: {str(e)}")
+                            else:
+                                messagebox.showinfo("No URL", "No URL available for this item")
+                            break
+        
+        # Bind double-click event
+        tree.bind("<Double-1>", on_item_click)
+        
         # Pack tree and scrollbar
         tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         yscrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        
+        # Add instruction label
+        instruction_frame = ttk.Frame(items_frame)
+        instruction_frame.pack(fill=tk.X, padx=10, pady=5)
+        ttk.Label(
+            instruction_frame, 
+            text="💡 Double-click any row to open the eBay search results in your browser",
+            font=("Segoe UI", 9),
+            foreground="blue"
+        ).pack(anchor=tk.W)
+        
+        ttk.Label(
+            instruction_frame, 
+            text="ℹ️  Note: This is demo mode with simulated data. Real implementation would show actual sold listings.",
+            font=("Segoe UI", 8),
+            foreground="gray"
+        ).pack(anchor=tk.W, pady=(2,0))
         
         # Initial validation
         validate_and_approve()
