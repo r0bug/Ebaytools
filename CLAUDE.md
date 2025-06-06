@@ -176,6 +176,39 @@ This is an eBay listing management tool suite with photo processing, price analy
 
 **NEVER declare functionality "fixed" or "complete" unless changes are pushed to GitHub!**
 
+## 🚨 MANDATORY POST-CODE-CHANGE CHECKLIST 🚨
+
+**After EVERY file modification, I MUST immediately run:**
+
+```bash
+git status
+git add .
+git commit -m "descriptive message"
+git push
+```
+
+**ONLY after successful push can I declare ANYTHING complete.**
+
+## 🚨 VIOLATION CONSEQUENCES 🚨
+
+**If I declare work "complete" without GitHub push:**
+- I MUST immediately acknowledge the violation
+- I MUST commit/push before any other responses
+- I MUST update CLAUDE.md with lessons learned from the violation
+- I MUST include additional enforcement mechanisms to prevent recurrence
+
+## 🚨 FORBIDDEN LANGUAGE UNTIL PUSHED 🚨
+
+**Words I CANNOT use until changes are on GitHub:**
+- "complete", "finished", "done", "ready"
+- "implemented", "fixed", "working"
+- Any summary of accomplishments
+- Any status declarations
+
+**ONLY allowed language:** "Changes made locally, not yet committed"
+
+**Exception:** After successful `git push`, I may then use completion language.
+
 ### Required Workflow:
 1. **Implement changes** in main code (`ebay_tools/ebay_tools/`)
 2. **Update ALL installer versions** (`windows_installer/ebay_tools/`)
