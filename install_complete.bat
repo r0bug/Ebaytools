@@ -210,12 +210,35 @@ echo.
 :: Create application launchers  
 echo [7/8] Creating application launchers...
 
-:: Create enhanced batch files that use the installed code
+:: Create enhanced batch files that try multiple Python commands
 echo @echo off > ebay_setup.bat
 echo title eBay Tools - Setup >> ebay_setup.bat
 echo cd /d "%%~dp0" >> ebay_setup.bat
 echo set PYTHONPATH=.;%%PYTHONPATH%% >> ebay_setup.bat
-echo %PYTHON_CMD% -m ebay_tools.apps.setup >> ebay_setup.bat
+echo. >> ebay_setup.bat
+echo :: Try different Python commands >> ebay_setup.bat
+echo python --version ^>nul 2^>^&1 >> ebay_setup.bat
+echo if %%errorlevel%% == 0 ( >> ebay_setup.bat
+echo     python -m ebay_tools.apps.setup >> ebay_setup.bat
+echo     goto :end >> ebay_setup.bat
+echo ^) >> ebay_setup.bat
+echo. >> ebay_setup.bat
+echo py --version ^>nul 2^>^&1 >> ebay_setup.bat
+echo if %%errorlevel%% == 0 ( >> ebay_setup.bat
+echo     py -m ebay_tools.apps.setup >> ebay_setup.bat
+echo     goto :end >> ebay_setup.bat
+echo ^) >> ebay_setup.bat
+echo. >> ebay_setup.bat
+echo python3 --version ^>nul 2^>^&1 >> ebay_setup.bat
+echo if %%errorlevel%% == 0 ( >> ebay_setup.bat
+echo     python3 -m ebay_tools.apps.setup >> ebay_setup.bat
+echo     goto :end >> ebay_setup.bat
+echo ^) >> ebay_setup.bat
+echo. >> ebay_setup.bat
+echo echo Python not found! Please install Python 3.8 or higher. >> ebay_setup.bat
+echo pause >> ebay_setup.bat
+echo. >> ebay_setup.bat
+echo :end >> ebay_setup.bat
 echo if %%errorlevel%% neq 0 ( >> ebay_setup.bat
 echo     echo. >> ebay_setup.bat
 echo     echo [ERROR] Application failed to start >> ebay_setup.bat
@@ -227,7 +250,30 @@ echo @echo off > ebay_processor.bat
 echo title eBay Tools - Processor >> ebay_processor.bat
 echo cd /d "%%~dp0" >> ebay_processor.bat
 echo set PYTHONPATH=.;%%PYTHONPATH%% >> ebay_processor.bat
-echo %PYTHON_CMD% -m ebay_tools.apps.processor >> ebay_processor.bat
+echo. >> ebay_processor.bat
+echo :: Try different Python commands >> ebay_processor.bat
+echo python --version ^>nul 2^>^&1 >> ebay_processor.bat
+echo if %%errorlevel%% == 0 ( >> ebay_processor.bat
+echo     python -m ebay_tools.apps.processor >> ebay_processor.bat
+echo     goto :end >> ebay_processor.bat
+echo ^) >> ebay_processor.bat
+echo. >> ebay_processor.bat
+echo py --version ^>nul 2^>^&1 >> ebay_processor.bat
+echo if %%errorlevel%% == 0 ( >> ebay_processor.bat
+echo     py -m ebay_tools.apps.processor >> ebay_processor.bat
+echo     goto :end >> ebay_processor.bat
+echo ^) >> ebay_processor.bat
+echo. >> ebay_processor.bat
+echo python3 --version ^>nul 2^>^&1 >> ebay_processor.bat
+echo if %%errorlevel%% == 0 ( >> ebay_processor.bat
+echo     python3 -m ebay_tools.apps.processor >> ebay_processor.bat
+echo     goto :end >> ebay_processor.bat
+echo ^) >> ebay_processor.bat
+echo. >> ebay_processor.bat
+echo echo Python not found! Please install Python 3.8 or higher. >> ebay_processor.bat
+echo pause >> ebay_processor.bat
+echo. >> ebay_processor.bat
+echo :end >> ebay_processor.bat
 echo if %%errorlevel%% neq 0 ( >> ebay_processor.bat
 echo     echo. >> ebay_processor.bat
 echo     echo [ERROR] Application failed to start >> ebay_processor.bat
@@ -239,7 +285,30 @@ echo @echo off > ebay_viewer.bat
 echo title eBay Tools - Viewer >> ebay_viewer.bat
 echo cd /d "%%~dp0" >> ebay_viewer.bat
 echo set PYTHONPATH=.;%%PYTHONPATH%% >> ebay_viewer.bat
-echo %PYTHON_CMD% -m ebay_tools.apps.viewer >> ebay_viewer.bat
+echo. >> ebay_viewer.bat
+echo :: Try different Python commands >> ebay_viewer.bat
+echo python --version ^>nul 2^>^&1 >> ebay_viewer.bat
+echo if %%errorlevel%% == 0 ( >> ebay_viewer.bat
+echo     python -m ebay_tools.apps.viewer >> ebay_viewer.bat
+echo     goto :end >> ebay_viewer.bat
+echo ^) >> ebay_viewer.bat
+echo. >> ebay_viewer.bat
+echo py --version ^>nul 2^>^&1 >> ebay_viewer.bat
+echo if %%errorlevel%% == 0 ( >> ebay_viewer.bat
+echo     py -m ebay_tools.apps.viewer >> ebay_viewer.bat
+echo     goto :end >> ebay_viewer.bat
+echo ^) >> ebay_viewer.bat
+echo. >> ebay_viewer.bat
+echo python3 --version ^>nul 2^>^&1 >> ebay_viewer.bat
+echo if %%errorlevel%% == 0 ( >> ebay_viewer.bat
+echo     python3 -m ebay_tools.apps.viewer >> ebay_viewer.bat
+echo     goto :end >> ebay_viewer.bat
+echo ^) >> ebay_viewer.bat
+echo. >> ebay_viewer.bat
+echo echo Python not found! Please install Python 3.8 or higher. >> ebay_viewer.bat
+echo pause >> ebay_viewer.bat
+echo. >> ebay_viewer.bat
+echo :end >> ebay_viewer.bat
 echo if %%errorlevel%% neq 0 ( >> ebay_viewer.bat
 echo     echo. >> ebay_viewer.bat
 echo     echo [ERROR] Application failed to start >> ebay_viewer.bat
@@ -251,7 +320,30 @@ echo @echo off > ebay_price.bat
 echo title eBay Tools - Price Analyzer >> ebay_price.bat
 echo cd /d "%%~dp0" >> ebay_price.bat
 echo set PYTHONPATH=.;%%PYTHONPATH%% >> ebay_price.bat
-echo %PYTHON_CMD% -m ebay_tools.apps.price_analyzer >> ebay_price.bat
+echo. >> ebay_price.bat
+echo :: Try different Python commands >> ebay_price.bat
+echo python --version ^>nul 2^>^&1 >> ebay_price.bat
+echo if %%errorlevel%% == 0 ( >> ebay_price.bat
+echo     python -m ebay_tools.apps.price_analyzer >> ebay_price.bat
+echo     goto :end >> ebay_price.bat
+echo ^) >> ebay_price.bat
+echo. >> ebay_price.bat
+echo py --version ^>nul 2^>^&1 >> ebay_price.bat
+echo if %%errorlevel%% == 0 ( >> ebay_price.bat
+echo     py -m ebay_tools.apps.price_analyzer >> ebay_price.bat
+echo     goto :end >> ebay_price.bat
+echo ^) >> ebay_price.bat
+echo. >> ebay_price.bat
+echo python3 --version ^>nul 2^>^&1 >> ebay_price.bat
+echo if %%errorlevel%% == 0 ( >> ebay_price.bat
+echo     python3 -m ebay_tools.apps.price_analyzer >> ebay_price.bat
+echo     goto :end >> ebay_price.bat
+echo ^) >> ebay_price.bat
+echo. >> ebay_price.bat
+echo echo Python not found! Please install Python 3.8 or higher. >> ebay_price.bat
+echo pause >> ebay_price.bat
+echo. >> ebay_price.bat
+echo :end >> ebay_price.bat
 echo if %%errorlevel%% neq 0 ( >> ebay_price.bat
 echo     echo. >> ebay_price.bat
 echo     echo [ERROR] Application failed to start >> ebay_price.bat
