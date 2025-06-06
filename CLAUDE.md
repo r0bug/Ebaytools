@@ -253,6 +253,58 @@ After EVERY code change, edit, commit, or push, I MUST include this verification
 - **PREVENTS VIOLATIONS**: Forces conscious check of rules before making claims
 - **USER ACCOUNTABILITY**: Provides clear record of what was actually done vs claimed
 
+## 🚨 MANDATORY INSTALLER COMPLETENESS RULE 🚨
+
+**ALL installers MUST be complete installers that fully install/update the entire product.**
+
+### Required Installer Behavior:
+Every installer, regardless of platform, MUST:
+
+1. **ALWAYS UPDATE EVERYTHING**: Replace/overwrite ALL application code files, not just dependencies
+2. **BACKUP EXISTING INSTALLATIONS**: Safely backup previous versions before overwriting
+3. **VERIFY COMPLETE INSTALLATION**: Test that all critical files and features are present
+4. **HANDLE BOTH FRESH AND UPDATE INSTALLS**: Work correctly for new installations and updates
+5. **COPY ALL SOURCE CODE**: Ensure latest application logic, UI, features are installed
+6. **TEST FUNCTIONALITY**: Verify key features work after installation
+7. **CREATE ALL LAUNCHERS**: Generate platform-appropriate application launchers
+8. **PROVIDE CLEAR FEEDBACK**: Show user exactly what was installed/updated
+
+### Forbidden Installer Types:
+- ❌ **NEVER** create "dependency-only" installers that skip code files
+- ❌ **NEVER** create "partial" installers that only update some components
+- ❌ **NEVER** assume existing code files are "good enough"
+- ❌ **NEVER** create installers that only work for fresh installations
+
+### Platform Requirements:
+
+#### Windows Installers Must:
+- Copy all files from `windows_installer\ebay_tools\` to `ebay_tools\`
+- Backup existing `ebay_tools\` directory to `ebay_tools_backup\`
+- Generate working `.bat` files with Python fallback detection
+- Test reset functionality, version detection, and module imports
+
+#### Linux/macOS Installers Must:
+- Copy all files from source directory to target directory
+- Backup existing installation directory
+- Generate working shell scripts (`.sh` for Linux, both `.sh` and `.command` for macOS)
+- Test functionality and provide clear user feedback
+
+### Enforcement Rules:
+- ✅ **ALWAYS** make installers that completely replace the product
+- ✅ **ALWAYS** backup existing installations before overwriting
+- ✅ **ALWAYS** verify all files are present after installation
+- ✅ **ALWAYS** test that key functionality works after installation
+- ❌ **NEVER** create installers that only handle dependencies
+- ❌ **NEVER** assume users will manually copy code files
+- ❌ **NEVER** create installers that fail on second runs
+
+### Why This Matters:
+- Users expect installers to fully install/update products
+- Partial installers create confusion about what's actually installed
+- Users won't get bug fixes or new features if code isn't updated
+- Professional software always has complete installers
+- Backup functionality prevents data loss during updates
+
 ## 🔖 VERSION DISPLAY REQUIREMENT
 
 **ALL GUI applications MUST have Help > About menu showing version information!**
