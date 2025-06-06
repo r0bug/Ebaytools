@@ -74,7 +74,21 @@ class EbayExportGUI:
         self.status_bar = StatusBar(self.root, "Ready")
         
         # Center the window
-        center_window(self.root, 650, 450)
+        try:
+            # Try with parameters first (newer version)
+            center_window(self.root, 650, 450)
+        except TypeError:
+            # Fall back to no parameters (compatibility)
+            try:
+                center_window(self.root)
+            except:
+                # If all else fails, just position manually
+                self.root.update_idletasks()
+                width = self.root.winfo_width()
+                height = self.root.winfo_height()
+                x = (self.root.winfo_screenwidth() // 2) - (width // 2)
+                y = (self.root.winfo_screenheight() // 2) - (height // 2)
+                self.root.geometry(f'+{x}+{y}')
     
     def create_widgets(self):
         """Create the GUI widgets."""
