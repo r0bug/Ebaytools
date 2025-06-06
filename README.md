@@ -30,7 +30,7 @@ Simple, reliable installers for each platform:
 
 #### Windows
 ```bash
-# Single installer for Windows
+# Run from the main eBay Tools directory (NOT from windows_installer folder)
 install.bat
 ```
 

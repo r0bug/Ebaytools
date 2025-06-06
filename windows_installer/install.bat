@@ -1,6 +1,7 @@
 @echo off
 :: eBay Tools Windows Installer v3.0.0
 :: Comprehensive installation script with enhanced Python detection and dependency management
+:: NOTE: For the latest installer, run install.bat from the main directory instead
 
 title eBay Tools Installer v3.0.0
 color 0A
@@ -9,6 +10,10 @@ echo.
 echo =====================================
 echo    eBay Tools Installation v3.0.0
 echo =====================================
+echo.
+echo NOTE: You are running the installer from windows_installer folder.
+echo For the latest version, run install.bat from the main directory instead.
+echo.
 echo.
 echo This installer will:
 echo   - Check for Python installation
