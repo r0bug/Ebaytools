@@ -131,6 +131,16 @@ class EbayDirectListingDemo:
         self.details_text = tk.Text(self.details_frame, height=20, width=60, wrap=tk.WORD)
         self.details_text.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
         
+        # Edit button frame
+        edit_button_frame = ttk.Frame(self.details_frame)
+        edit_button_frame.pack(fill=tk.X, padx=10, pady=5)
+        
+        ttk.Button(
+            edit_button_frame,
+            text="Edit Item",
+            command=self.edit_current_item
+        ).pack(side=tk.LEFT, padx=5)
+        
         # Export tab content
         ttk.Label(self.export_frame, text="Export Options:").pack(anchor=tk.W, padx=10, pady=5)
         
@@ -299,6 +309,139 @@ class EbayDirectListingDemo:
         
         # Update the text widget
         self.details_text.insert("1.0", "\n".join(details))
+    
+    def edit_current_item(self):
+        """Open dialog to edit the current item."""
+        if self.current_item_index < 0 or self.current_item_index >= len(self.queue_data):
+            messagebox.showinfo("Info", "No item selected.")
+            return
+        
+        item = self.queue_data[self.current_item_index]
+        
+        # Create edit dialog
+        dialog = tk.Toplevel(self.root)
+        dialog.title("Edit Item")
+        dialog.geometry("500x600")
+        
+        # Make dialog modal
+        dialog.transient(self.root)
+        dialog.grab_set()
+        
+        # Create fields
+        fields = {}
+        row = 0
+        
+        # SKU
+        ttk.Label(dialog, text="SKU:").grid(row=row, column=0, sticky=tk.W, padx=10, pady=5)
+        fields['sku'] = ttk.Entry(dialog, width=40)
+        fields['sku'].insert(0, item.get('sku', ''))
+        fields['sku'].grid(row=row, column=1, padx=10, pady=5)
+        row += 1
+        
+        # Title
+        ttk.Label(dialog, text="Title:").grid(row=row, column=0, sticky=tk.W, padx=10, pady=5)
+        fields['title'] = ttk.Entry(dialog, width=40)
+        fields['title'].insert(0, item.get('title', '') or item.get('temp_title', ''))
+        fields['title'].grid(row=row, column=1, padx=10, pady=5)
+        row += 1
+        
+        # Condition
+        ttk.Label(dialog, text="Condition:").grid(row=row, column=0, sticky=tk.W, padx=10, pady=5)
+        fields['condition'] = ttk.Combobox(dialog, width=37)
+        fields['condition']['values'] = [
+            '1000 - New', '1500 - New Other', '1750 - New with defects',
+            '2000 - Certified Refurbished', '2500 - Seller Refurbished',
+            '3000 - Used', '4000 - Very Good', '5000 - Good',
+            '6000 - Acceptable', '7000 - For parts'
+        ]
+        current_condition = item.get('condition', '1000')
+        # Find matching condition in combobox
+        for i, val in enumerate(fields['condition']['values']):
+            if val.startswith(current_condition):
+                fields['condition'].current(i)
+                break
+        fields['condition'].grid(row=row, column=1, padx=10, pady=5)
+        row += 1
+        
+        # Price
+        ttk.Label(dialog, text="Price:").grid(row=row, column=0, sticky=tk.W, padx=10, pady=5)
+        fields['price'] = ttk.Entry(dialog, width=40)
+        fields['price'].insert(0, item.get('price', ''))
+        fields['price'].grid(row=row, column=1, padx=10, pady=5)
+        row += 1
+        
+        # Quantity
+        ttk.Label(dialog, text="Quantity:").grid(row=row, column=0, sticky=tk.W, padx=10, pady=5)
+        fields['quantity'] = ttk.Entry(dialog, width=40)
+        fields['quantity'].insert(0, item.get('quantity', '1'))
+        fields['quantity'].grid(row=row, column=1, padx=10, pady=5)
+        row += 1
+        
+        # Category
+        ttk.Label(dialog, text="Category:").grid(row=row, column=0, sticky=tk.W, padx=10, pady=5)
+        fields['category'] = ttk.Entry(dialog, width=40)
+        fields['category'].insert(0, item.get('category', ''))
+        fields['category'].grid(row=row, column=1, padx=10, pady=5)
+        row += 1
+        
+        # Format
+        ttk.Label(dialog, text="Format:").grid(row=row, column=0, sticky=tk.W, padx=10, pady=5)
+        fields['format'] = ttk.Combobox(dialog, width=37)
+        fields['format']['values'] = ['FixedPrice', 'Auction']
+        fields['format'].set(item.get('format', 'FixedPrice'))
+        fields['format'].grid(row=row, column=1, padx=10, pady=5)
+        row += 1
+        
+        # Description
+        ttk.Label(dialog, text="Description:").grid(row=row, column=0, sticky=tk.NW, padx=10, pady=5)
+        fields['description'] = tk.Text(dialog, width=40, height=10, wrap=tk.WORD)
+        fields['description'].insert("1.0", item.get('description', ''))
+        fields['description'].grid(row=row, column=1, padx=10, pady=5)
+        row += 1
+        
+        # Buttons
+        button_frame = ttk.Frame(dialog)
+        button_frame.grid(row=row, column=0, columnspan=2, pady=10)
+        
+        def save_changes():
+            # Update item with new values
+            item['sku'] = fields['sku'].get()
+            item['title'] = fields['title'].get()
+            
+            # Extract condition code from combobox
+            condition_val = fields['condition'].get()
+            if condition_val:
+                item['condition'] = condition_val.split(' - ')[0]
+            
+            item['price'] = fields['price'].get()
+            item['quantity'] = fields['quantity'].get()
+            item['category'] = fields['category'].get()
+            item['format'] = fields['format'].get()
+            item['description'] = fields['description'].get("1.0", tk.END).strip()
+            
+            # Save queue to file
+            self.save_queue()
+            
+            # Update UI
+            self.update_items_listbox()
+            self.display_item_details()
+            
+            # Close dialog
+            dialog.destroy()
+            
+            messagebox.showinfo("Success", "Item updated successfully!")
+        
+        def cancel():
+            dialog.destroy()
+        
+        ttk.Button(button_frame, text="Save", command=save_changes).pack(side=tk.LEFT, padx=5)
+        ttk.Button(button_frame, text="Cancel", command=cancel).pack(side=tk.LEFT, padx=5)
+        
+        # Center dialog on parent
+        dialog.update_idletasks()
+        x = (dialog.winfo_screenwidth() // 2) - (dialog.winfo_width() // 2)
+        y = (dialog.winfo_screenheight() // 2) - (dialog.winfo_height() // 2)
+        dialog.geometry(f'+{x}+{y}')
     
     def configure_ebay_api(self):
         """Open the eBay API configuration dialog."""
