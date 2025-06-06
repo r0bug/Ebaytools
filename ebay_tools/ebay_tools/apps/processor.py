@@ -34,6 +34,7 @@ from ebay_tools.utils.file_utils import ensure_directory_exists, safe_load_json,
 from ebay_tools.utils.ui_utils import StatusBar
 from ebay_tools.utils.background_utils import BackgroundTask, BackgroundTaskManager
 from ebay_tools.utils.launcher_utils import ToolLauncher, create_tools_menu
+from ebay_tools.utils.version_utils import show_about_dialog, PROCESSOR_FEATURES
 
 # Configure logging with more detailed output
 import logging.handlers
@@ -436,41 +437,12 @@ class EbayLLMProcessor:
     
     def show_about(self):
         """Show about dialog with version information."""
-        version = "Unknown"
-        try:
-            # Try importing from ebay_tools package
-            from ebay_tools import __version__
-            version = __version__
-        except ImportError:
-            try:
-                # Try reading version from __init__.py file directly
-                import os
-                init_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), "__init__.py")
-                with open(init_file, 'r') as f:
-                    for line in f:
-                        if line.strip().startswith('__version__'):
-                            version = line.split('=')[1].strip().strip('"\'')
-                            break
-            except Exception:
-                version = "3.0.0"  # Fallback to known version
-        
-        about_text = f"""eBay LLM Photo Processor
-Version: {version}
-Part of eBay Tools Suite
-
-Features:
-• Photo processing with LLM APIs
-• Interactive pricing system
-• Processing tags reset functionality
-• Batch processing capabilities
-• Multiple API support
-
-Latest Update: Processing Tags Reset System
-- Individual item reset
-- Type-based reset (photos/items)
-- Global reset functionality"""
-        
-        messagebox.showinfo("About eBay Tools Processor", about_text)
+        show_about_dialog(
+            self.root,
+            "eBay LLM Photo Processor",
+            "AI-powered photo processing with reset functionality and interactive pricing",
+            PROCESSOR_FEATURES
+        )
     
     def toggle_api_key_visibility(self):
         """Toggle the visibility of the API key."""
