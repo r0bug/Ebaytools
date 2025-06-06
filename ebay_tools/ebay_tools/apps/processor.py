@@ -219,6 +219,10 @@ class EbayLLMProcessor:
         self.reload_queue_btn = ttk.Button(self.top_frame, text="Reload Queue", command=self.reload_queue)
         self.reload_queue_btn.pack(side=tk.LEFT, padx=5)
         
+        # Add reset processing tags button
+        self.reset_tags_btn = ttk.Button(self.top_frame, text="🔄 Reset Tags", command=self.open_reset_dialog)
+        self.reset_tags_btn.pack(side=tk.LEFT, padx=5)
+        
         self.queue_status_label = ttk.Label(self.top_frame, text="Queue: 0 items (0 processed)")
         self.queue_status_label.pack(side=tk.RIGHT, padx=5)
         
@@ -2301,6 +2305,215 @@ For item specifics, use a format like "Brand: Apple" with each item specific on 
         self.log(f"Auto pricing error: {str(error)}")
         logger.error(f"Auto pricing error displayed to user: {str(error)}")
         messagebox.showerror("Auto Pricing Error", f"An error occurred during auto pricing: {str(error)}")
+
+    def open_reset_dialog(self):
+        """Open reset processing tags dialog with different options."""
+        if not self.work_queue:
+            messagebox.showinfo("Info", "No queue loaded. Please load a queue first.")
+            return
+        
+        # Create dialog window
+        dialog = tk.Toplevel(self.root)
+        dialog.title("Reset Processing Tags")
+        dialog.geometry("450x300")
+        dialog.resizable(False, False)
+        dialog.grab_set()  # Make dialog modal
+        
+        # Center the dialog on parent window
+        dialog.transient(self.root)
+        x = self.root.winfo_rootx() + (self.root.winfo_width() // 2) - 225
+        y = self.root.winfo_rooty() + (self.root.winfo_height() // 2) - 150
+        dialog.geometry(f"+{x}+{y}")
+        
+        # Main frame
+        main_frame = ttk.Frame(dialog, padding=20)
+        main_frame.pack(fill=tk.BOTH, expand=True)
+        
+        # Title
+        title_label = ttk.Label(main_frame, text="Reset Processing Tags", font=("Arial", 12, "bold"))
+        title_label.pack(pady=(0, 20))
+        
+        # Individual item reset section
+        individual_frame = ttk.LabelFrame(main_frame, text="Individual Item Reset", padding=10)
+        individual_frame.pack(fill=tk.X, pady=(0, 10))
+        
+        ttk.Label(individual_frame, text="Reset tags for current item only:").pack(anchor=tk.W)
+        current_item_btn = ttk.Button(individual_frame, text="🔄 Reset Current Item", 
+                                    command=lambda: self.reset_current_item_tags(dialog))
+        current_item_btn.pack(anchor=tk.W, pady=(5, 0))
+        
+        # Type-based reset section
+        type_frame = ttk.LabelFrame(main_frame, text="Type-Based Reset", padding=10)
+        type_frame.pack(fill=tk.X, pady=(0, 10))
+        
+        ttk.Label(type_frame, text="Reset tags by processing type:").pack(anchor=tk.W)
+        
+        type_buttons_frame = ttk.Frame(type_frame)
+        type_buttons_frame.pack(fill=tk.X, pady=(5, 0))
+        
+        photo_tags_btn = ttk.Button(type_buttons_frame, text="📸 Reset Photo Tags", 
+                                  command=lambda: self.reset_photo_tags(dialog))
+        photo_tags_btn.pack(side=tk.LEFT, padx=(0, 10))
+        
+        item_tags_btn = ttk.Button(type_buttons_frame, text="📦 Reset Item Tags", 
+                                 command=lambda: self.reset_item_completion_tags(dialog))
+        item_tags_btn.pack(side=tk.LEFT)
+        
+        # Global reset section
+        global_frame = ttk.LabelFrame(main_frame, text="Global Reset", padding=10)
+        global_frame.pack(fill=tk.X, pady=(0, 20))
+        
+        ttk.Label(global_frame, text="Reset all processing tags in queue:").pack(anchor=tk.W)
+        global_btn = ttk.Button(global_frame, text="🌐 Reset All Tags", 
+                              command=lambda: self.reset_all_tags(dialog))
+        global_btn.pack(anchor=tk.W, pady=(5, 0))
+        
+        # Warning label
+        warning_label = ttk.Label(main_frame, text="⚠️ Warning: Reset operations cannot be undone!", 
+                                foreground="red", font=("Arial", 9))
+        warning_label.pack(pady=(10, 0))
+        
+        # Close button
+        close_btn = ttk.Button(main_frame, text="Close", command=dialog.destroy)
+        close_btn.pack(pady=(20, 0))
+    
+    def reset_current_item_tags(self, dialog):
+        """Reset processing tags for the current item only."""
+        if self.current_item_index < 0 or self.current_item_index >= len(self.work_queue):
+            messagebox.showwarning("Warning", "No current item selected.")
+            return
+        
+        result = messagebox.askyesno("Confirm Reset", 
+                                   "Reset all processing tags for the current item?\n\n"
+                                   "This will mark all photos as unprocessed and remove "
+                                   "any generated descriptions.")
+        if not result:
+            return
+        
+        item = self.work_queue[self.current_item_index]
+        reset_count = 0
+        
+        # Reset item-level tags
+        if item.get("processed", False):
+            item.pop("processed", None)
+            item.pop("processed_at", None)
+            reset_count += 1
+        
+        # Reset photo-level tags
+        photos = item.get("photos", [])
+        for photo in photos:
+            if photo.get("processed", False):
+                photo.pop("processed", None)
+                photo.pop("processed_at", None)
+                photo.pop("api_result", None)
+                reset_count += 1
+        
+        # Save queue
+        if self.queue_file_path:
+            save_queue(self.work_queue, self.queue_file_path)
+        
+        # Update display
+        self.display_current_item()
+        self.update_queue_status()
+        
+        messagebox.showinfo("Reset Complete", f"Reset {reset_count} processing tags for current item.")
+        dialog.destroy()
+    
+    def reset_photo_tags(self, dialog):
+        """Reset only photo-level processing tags across all items."""
+        result = messagebox.askyesno("Confirm Reset", 
+                                   "Reset all photo processing tags in the queue?\n\n"
+                                   "This will mark all photos as unprocessed and remove "
+                                   "generated descriptions, but keep item completion status.")
+        if not result:
+            return
+        
+        reset_count = 0
+        for item in self.work_queue:
+            photos = item.get("photos", [])
+            for photo in photos:
+                if photo.get("processed", False):
+                    photo.pop("processed", None)
+                    photo.pop("processed_at", None)
+                    photo.pop("api_result", None)
+                    reset_count += 1
+        
+        # Save queue
+        if self.queue_file_path:
+            save_queue(self.work_queue, self.queue_file_path)
+        
+        # Update display
+        self.display_current_item()
+        self.update_queue_status()
+        
+        messagebox.showinfo("Reset Complete", f"Reset {reset_count} photo processing tags.")
+        dialog.destroy()
+    
+    def reset_item_completion_tags(self, dialog):
+        """Reset only item-level completion tags across all items."""
+        result = messagebox.askyesno("Confirm Reset", 
+                                   "Reset all item completion tags in the queue?\n\n"
+                                   "This will mark all items as incomplete, but keep "
+                                   "individual photo processing status.")
+        if not result:
+            return
+        
+        reset_count = 0
+        for item in self.work_queue:
+            if item.get("processed", False):
+                item.pop("processed", None)
+                item.pop("processed_at", None)
+                reset_count += 1
+        
+        # Save queue
+        if self.queue_file_path:
+            save_queue(self.work_queue, self.queue_file_path)
+        
+        # Update display
+        self.display_current_item()
+        self.update_queue_status()
+        
+        messagebox.showinfo("Reset Complete", f"Reset {reset_count} item completion tags.")
+        dialog.destroy()
+    
+    def reset_all_tags(self, dialog):
+        """Reset all processing tags across all items and photos."""
+        result = messagebox.askyesno("Confirm Reset", 
+                                   "Reset ALL processing tags in the queue?\n\n"
+                                   "This will mark all items and photos as unprocessed "
+                                   "and remove all generated descriptions.\n\n"
+                                   "This action cannot be undone!")
+        if not result:
+            return
+        
+        reset_count = 0
+        
+        for item in self.work_queue:
+            # Reset item-level tags
+            if item.get("processed", False):
+                item.pop("processed", None)
+                item.pop("processed_at", None)
+                reset_count += 1
+            
+            # Reset photo-level tags
+            photos = item.get("photos", [])
+            for photo in photos:
+                if photo.get("processed", False):
+                    photo.pop("processed", None)
+                    photo.pop("processed_at", None)
+                    photo.pop("api_result", None)
+                    reset_count += 1
+        
+        # Save queue
+        if self.queue_file_path:
+            save_queue(self.work_queue, self.queue_file_path)
+        
+        # Update display
+        self.display_current_item()
+        self.update_queue_status()
+        
+        messagebox.showinfo("Reset Complete", f"Reset {reset_count} total processing tags.")
+        dialog.destroy()
 
 
 def main():
