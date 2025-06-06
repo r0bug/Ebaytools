@@ -214,7 +214,7 @@ echo [7/8] Creating application launchers...
 echo @echo off > ebay_setup.bat
 echo title eBay Tools - Setup >> ebay_setup.bat
 echo cd /d "%%~dp0" >> ebay_setup.bat
-echo set PYTHONPATH=.;%%PYTHONPATH%% >> ebay_setup.bat
+echo set PYTHONPATH=%%~dp0;%%PYTHONPATH%% >> ebay_setup.bat
 echo. >> ebay_setup.bat
 echo :: Try different Python commands >> ebay_setup.bat
 echo python --version ^>nul 2^>^&1 >> ebay_setup.bat
@@ -249,7 +249,7 @@ echo ^) >> ebay_setup.bat
 echo @echo off > ebay_processor.bat
 echo title eBay Tools - Processor >> ebay_processor.bat
 echo cd /d "%%~dp0" >> ebay_processor.bat
-echo set PYTHONPATH=.;%%PYTHONPATH%% >> ebay_processor.bat
+echo set PYTHONPATH=%%~dp0;%%PYTHONPATH%% >> ebay_processor.bat
 echo. >> ebay_processor.bat
 echo :: Try different Python commands >> ebay_processor.bat
 echo python --version ^>nul 2^>^&1 >> ebay_processor.bat
@@ -284,7 +284,7 @@ echo ^) >> ebay_processor.bat
 echo @echo off > ebay_viewer.bat
 echo title eBay Tools - Viewer >> ebay_viewer.bat
 echo cd /d "%%~dp0" >> ebay_viewer.bat
-echo set PYTHONPATH=.;%%PYTHONPATH%% >> ebay_viewer.bat
+echo set PYTHONPATH=%%~dp0;%%PYTHONPATH%% >> ebay_viewer.bat
 echo. >> ebay_viewer.bat
 echo :: Try different Python commands >> ebay_viewer.bat
 echo python --version ^>nul 2^>^&1 >> ebay_viewer.bat
@@ -319,7 +319,7 @@ echo ^) >> ebay_viewer.bat
 echo @echo off > ebay_price.bat
 echo title eBay Tools - Price Analyzer >> ebay_price.bat
 echo cd /d "%%~dp0" >> ebay_price.bat
-echo set PYTHONPATH=.;%%PYTHONPATH%% >> ebay_price.bat
+echo set PYTHONPATH=%%~dp0;%%PYTHONPATH%% >> ebay_price.bat
 echo. >> ebay_price.bat
 echo :: Try different Python commands >> ebay_price.bat
 echo python --version ^>nul 2^>^&1 >> ebay_price.bat
