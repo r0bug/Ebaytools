@@ -213,6 +213,8 @@ echo [7/8] Creating application launchers...
 :: Create enhanced batch files that try multiple Python commands
 echo @echo off > ebay_setup.bat
 echo title eBay Tools - Setup >> ebay_setup.bat
+echo echo Starting eBay Tools - Setup... >> ebay_setup.bat
+echo echo. >> ebay_setup.bat
 echo cd /d "%%~dp0" >> ebay_setup.bat
 echo set PYTHONPATH=%%~dp0;%%PYTHONPATH%% >> ebay_setup.bat
 echo. >> ebay_setup.bat
@@ -241,13 +243,14 @@ echo. >> ebay_setup.bat
 echo :end >> ebay_setup.bat
 echo if %%errorlevel%% neq 0 ( >> ebay_setup.bat
 echo     echo. >> ebay_setup.bat
-echo     echo [ERROR] Application failed to start >> ebay_setup.bat
-echo     echo Please check the installation and try again >> ebay_setup.bat
+echo     echo An error occurred. Check the logs folder for details. >> ebay_setup.bat
 echo     pause >> ebay_setup.bat
 echo ^) >> ebay_setup.bat
 
 echo @echo off > ebay_processor.bat
 echo title eBay Tools - Processor >> ebay_processor.bat
+echo echo Starting eBay Tools - Processor... >> ebay_processor.bat
+echo echo. >> ebay_processor.bat
 echo cd /d "%%~dp0" >> ebay_processor.bat
 echo set PYTHONPATH=%%~dp0;%%PYTHONPATH%% >> ebay_processor.bat
 echo. >> ebay_processor.bat
@@ -276,13 +279,14 @@ echo. >> ebay_processor.bat
 echo :end >> ebay_processor.bat
 echo if %%errorlevel%% neq 0 ( >> ebay_processor.bat
 echo     echo. >> ebay_processor.bat
-echo     echo [ERROR] Application failed to start >> ebay_processor.bat
-echo     echo Please check the installation and try again >> ebay_processor.bat
+echo     echo An error occurred. Check the logs folder for details. >> ebay_processor.bat
 echo     pause >> ebay_processor.bat
 echo ^) >> ebay_processor.bat
 
 echo @echo off > ebay_viewer.bat
 echo title eBay Tools - Viewer >> ebay_viewer.bat
+echo echo Starting eBay Tools - Viewer... >> ebay_viewer.bat
+echo echo. >> ebay_viewer.bat
 echo cd /d "%%~dp0" >> ebay_viewer.bat
 echo set PYTHONPATH=%%~dp0;%%PYTHONPATH%% >> ebay_viewer.bat
 echo. >> ebay_viewer.bat
@@ -311,13 +315,14 @@ echo. >> ebay_viewer.bat
 echo :end >> ebay_viewer.bat
 echo if %%errorlevel%% neq 0 ( >> ebay_viewer.bat
 echo     echo. >> ebay_viewer.bat
-echo     echo [ERROR] Application failed to start >> ebay_viewer.bat
-echo     echo Please check the installation and try again >> ebay_viewer.bat
+echo     echo An error occurred. Check the logs folder for details. >> ebay_viewer.bat
 echo     pause >> ebay_viewer.bat
 echo ^) >> ebay_viewer.bat
 
 echo @echo off > ebay_price.bat
 echo title eBay Tools - Price Analyzer >> ebay_price.bat
+echo echo Starting eBay Tools - Price Analyzer... >> ebay_price.bat
+echo echo. >> ebay_price.bat
 echo cd /d "%%~dp0" >> ebay_price.bat
 echo set PYTHONPATH=%%~dp0;%%PYTHONPATH%% >> ebay_price.bat
 echo. >> ebay_price.bat
@@ -346,8 +351,7 @@ echo. >> ebay_price.bat
 echo :end >> ebay_price.bat
 echo if %%errorlevel%% neq 0 ( >> ebay_price.bat
 echo     echo. >> ebay_price.bat
-echo     echo [ERROR] Application failed to start >> ebay_price.bat
-echo     echo Please check the installation and try again >> ebay_price.bat
+echo     echo An error occurred. Check the logs folder for details. >> ebay_price.bat
 echo     pause >> ebay_price.bat
 echo ^) >> ebay_price.bat
 
