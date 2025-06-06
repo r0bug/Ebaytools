@@ -28,6 +28,7 @@ from ebay_tools.core.config import ConfigManager
 from ebay_tools.utils.image_utils import open_image_with_orientation, fit_image_to_frame, create_photo_image
 from ebay_tools.utils.ui_utils import StatusBar, center_window
 from ebay_tools.utils.launcher_utils import ToolLauncher, create_tools_menu
+from ebay_tools.utils.version_utils import show_about_dialog, VIEWER_FEATURES
 
 # Configure logging
 logging.basicConfig(
@@ -1096,21 +1097,12 @@ class EbayJsonViewer:
     
     def show_about(self):
         """Show the about dialog."""
-        about_text = """
-eBay JSON Viewer
-
-Version: 3.0.0
-
-Part of the eBay Listing Automation System.
-This application allows viewing and exploring eBay listing data from JSON files.
-
-Features:
-- Browse items in a queue
-- View item details and photos
-- Export descriptions
-- Generate CSV files for eBay bulk upload
-"""
-        messagebox.showinfo("About", about_text)
+        show_about_dialog(
+            self.root,
+            "eBay JSON Viewer",
+            "View and explore eBay listing data from JSON files",
+            VIEWER_FEATURES
+        )
     
     def launch_processor(self):
         """Launch the LLM Processor with current queue file."""

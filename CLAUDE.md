@@ -203,6 +203,65 @@ This is an eBay listing management tool suite with photo processing, price analy
 - ✅ **ALWAYS** push changes before declaring completion
 - ✅ **ALWAYS** verify changes are on GitHub before user communication
 
+## 🔖 VERSION DISPLAY REQUIREMENT
+
+**ALL GUI applications MUST have Help > About menu showing version information!**
+
+### Required Implementation:
+- **ALL modules** with tkinter GUI must have Help > About menu
+- **Version display** must show current version from `__version__` in `__init__.py`
+- **Robust fallback** methods for version detection (import → file read → hardcoded)
+- **Consistent format** across all applications
+- **Windows installer versions** must also be updated
+
+### Applications Requiring Version Display:
+1. Main Launcher (`main_launcher.py`)
+2. Setup (`setup.py`) 
+3. Processor (`processor.py`) - ✅ DONE
+4. Viewer (`viewer.py`)
+5. Price Analyzer (`price_analyzer.py`)
+6. Gallery Creator (`gallery_creator.py`)
+7. CSV Export (`csv_export.py`)
+8. Mobile Import (`mobile_import.py`)
+9. Direct Listing (`direct_listing.py`)
+10. Complete Price Analyzer (`ebay_pricing_complete.py`)
+11. Simple Processor (`simple_processor.py`)
+
+### Implementation Standard:
+```python
+def show_about(self):
+    """Show about dialog with version information."""
+    version = "Unknown"
+    try:
+        from ebay_tools import __version__
+        version = __version__
+    except ImportError:
+        try:
+            import os
+            init_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), "__init__.py")
+            with open(init_file, 'r') as f:
+                for line in f:
+                    if line.strip().startswith('__version__'):
+                        version = line.split('=')[1].strip().strip('"\'')
+                        break
+        except Exception:
+            version = "3.0.0"  # Fallback to known version
+    
+    about_text = f"""[Application Name]
+Version: {version}
+Part of eBay Tools Suite
+
+[Application-specific features list]"""
+    
+    messagebox.showinfo("About [Application Name]", about_text)
+```
+
+### When Adding New GUI Applications:
+- ✅ **ALWAYS** include Help > About menu in menu bar
+- ✅ **ALWAYS** implement show_about() method with version display
+- ✅ **ALWAYS** update both main and windows_installer versions
+- ✅ **ALWAYS** test version display before committing
+
 ## UI Layout Issues Resolution
 The processor now has a scrollable main window to prevent buttons from going off-screen on high-resolution displays. All UI elements are contained within a scrollable canvas with mouse wheel support.
 

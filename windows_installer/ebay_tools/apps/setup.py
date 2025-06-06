@@ -25,6 +25,8 @@ from ebay_tools.utils.image_utils import open_image_with_orientation, create_thu
 from ebay_tools.utils.file_utils import ensure_directory_exists, safe_load_json, safe_save_json
 from ebay_tools.utils.ui_utils import StatusBar, PhotoFrame, ProgressIndicator, show_error, show_info, ask_yes_no
 from ebay_tools.utils.background_utils import BackgroundTask, BackgroundTaskManager
+from ebay_tools.utils.launcher_utils import ToolLauncher, create_tools_menu
+from ebay_tools.utils.version_utils import create_help_menu, SETUP_FEATURES
 
 # Configure logging
 logging.basicConfig(
@@ -104,6 +106,15 @@ class EbayWorkQueueSetup:
         tools_menu.add_command(label="Validate All Items", command=self.validate_all_items)
         tools_menu.add_command(label="Export to CSV", command=self.export_to_csv)
         menubar.add_cascade(label="Tools", menu=tools_menu)
+        
+        # Help menu with version info
+        create_help_menu(
+            menubar, 
+            self.root, 
+            "eBay Work Queue Setup",
+            "Create and manage work queues for eBay listing automation",
+            SETUP_FEATURES
+        )
         
         self.root.config(menu=menubar)
 
