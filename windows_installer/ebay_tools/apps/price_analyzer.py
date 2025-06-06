@@ -135,23 +135,45 @@ class PriceAnalyzer:
         }
     
     def _extract_search_terms(self, item_data):
-        """Extract search terms from item data."""
+        """Extract comprehensive search terms from item data."""
         search_terms = []
         
-        # Use title if available
+        # Use title if available (primary search term)
         if "title" in item_data and item_data["title"]:
-            search_terms.append(item_data["title"])
+            # Clean up the title - remove common noise words but keep important details
+            title = item_data["title"]
+            search_terms.append(title)
+        elif "temp_title" in item_data and item_data["temp_title"]:
+            search_terms.append(item_data["temp_title"])
             
-        # Use brand and model if available in item specifics
+        # Add important item specifics that help identify the exact item
         if "item_specifics" in item_data:
             specifics = item_data["item_specifics"]
-            if "Brand" in specifics and specifics["Brand"]:
-                search_terms.append(specifics["Brand"])
-            if "Model" in specifics and specifics["Model"]:
-                search_terms.append(specifics["Model"])
-                
-        # Join search terms
-        return " ".join(search_terms)
+            
+            # Priority order: Brand, Model, MPN are most important for matching
+            priority_fields = ["Brand", "Model", "MPN", "Part Number"]
+            for field in priority_fields:
+                if field in specifics and specifics[field]:
+                    search_terms.append(specifics[field])
+            
+            # Add other identifying characteristics
+            other_important = ["Color", "Size", "Type", "Series", "Edition"]
+            for field in other_important:
+                if field in specifics and specifics[field]:
+                    # Only add if it's not already in the title
+                    if specifics[field].lower() not in " ".join(search_terms).lower():
+                        search_terms.append(specifics[field])
+        
+        # Join search terms with spaces
+        full_search = " ".join(search_terms)
+        
+        # Clean up the search string
+        # Remove extra spaces and common noise words that might hurt search accuracy
+        noise_words = ["FAST", "FREE", "SHIPPING", "NEW", "USED", "NICE", "GREAT", "EXCELLENT", "RARE"]
+        words = full_search.split()
+        cleaned_words = [word for word in words if word.upper() not in noise_words]
+        
+        return " ".join(cleaned_words)
     
     def _fetch_sold_items(self, search_terms, limit=10):
         """
@@ -179,12 +201,16 @@ class PriceAnalyzer:
                 days_ago = random.randint(1, 90)
                 sold_date = datetime.now() - timedelta(days=days_ago)
                 
+                # Create proper eBay sold listings search URL
+                encoded_search = search_terms.replace(' ', '+').replace('&', '%26')
+                sold_url = f"https://www.ebay.com/sch/i.html?_from=R40&_nkw={encoded_search}&_sacat=0&LH_Sold=1&LH_Complete=1&_sop=13"
+                
                 item = {
                     "title": f"{search_terms} - Sample Item {i+1}",
                     "price": round(price, 2),
                     "shipping": round(random.uniform(0, 15), 2),
                     "sold_date": sold_date.strftime("%Y-%m-%d"),
-                    "url": f"https://www.ebay.com/sch/i.html?_nkw={search_terms.replace(' ', '+')}&_sacat=0&_sop=13&LH_Sold=1",
+                    "url": sold_url,
                     "condition": random.choice(["New", "Used", "Open box", "Refurbished"]),
                     "item_id": f"{random.randint(100000000, 999999999)}"
                 }
@@ -754,14 +780,14 @@ class PriceAnalyzerGUI(tk.Toplevel):
         instruction_frame.pack(fill=tk.X, padx=10, pady=5)
         ttk.Label(
             instruction_frame, 
-            text="💡 Double-click any row to open the eBay search results in your browser",
+            text="💡 Double-click any row to open eBay SOLD listings search in your browser",
             font=("Segoe UI", 9),
             foreground="blue"
         ).pack(anchor=tk.W)
         
         ttk.Label(
             instruction_frame, 
-            text="ℹ️  Note: This is demo mode with simulated data. Real implementation would show actual sold listings.",
+            text="ℹ️  Note: Demo mode shows simulated data. Links open real eBay sold listings for the complete item details.",
             font=("Segoe UI", 8),
             foreground="gray"
         ).pack(anchor=tk.W, pady=(2,0))
