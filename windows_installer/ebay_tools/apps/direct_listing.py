@@ -167,7 +167,11 @@ class EbayDirectListingDemo:
         self.create_listing_btn.grid(row=1, column=1, padx=5, pady=5)
         
         # Update eBay status
-        self.update_ebay_status()
+        # Update status bar
+        if self.ebay_integration.authenticated:
+            self.status_bar.config(text="eBay API: Connected (Mock Mode)")
+        else:
+            self.status_bar.config(text="eBay API: Not configured")
     
     def update_ebay_status(self):
         """Update the eBay authentication status display."""
@@ -298,8 +302,27 @@ class EbayDirectListingDemo:
     
     def configure_ebay_api(self):
         """Open the eBay API configuration dialog."""
-        self.ebay_integration.configure(self.root)
-        self.update_ebay_status()
+        # For now, use mock configuration
+        mock_config = {
+            "app_id": "mock_app_id",
+            "dev_id": "mock_dev_id",
+            "cert_id": "mock_cert_id",
+            "user_token": "mock_token"
+        }
+        success = self.ebay_integration.configure(mock_config)
+        if success:
+            messagebox.showinfo("eBay API Configuration", 
+                              "eBay API configured successfully (Mock Mode)\n\n"
+                              "Note: This is a demo mode. Real eBay integration\n"
+                              "requires valid API credentials.")
+        else:
+            messagebox.showerror("Configuration Error", 
+                               "Failed to configure eBay API")
+        # Update status bar
+        if self.ebay_integration.authenticated:
+            self.status_bar.config(text="eBay API: Connected (Mock Mode)")
+        else:
+            self.status_bar.config(text="eBay API: Not configured")
     
     def create_ebay_listing(self):
         """Create an eBay listing for the selected item."""
@@ -314,8 +337,37 @@ class EbayDirectListingDemo:
             messagebox.showerror("Error", "The selected item must have a SKU to create an eBay listing.")
             return
         
-        # Show the listing dialog
-        self.ebay_integration.create_listing_dialog(self.root, item)
+        # Validate and create listing
+        validation_result = self.ebay_integration.validate_item(item)
+        
+        if not validation_result["valid"]:
+            error_msg = "Cannot create listing due to validation errors:\n\n"
+            error_msg += "\n".join(f"• {error}" for error in validation_result["errors"])
+            if validation_result["warnings"]:
+                error_msg += "\n\nWarnings:\n"
+                error_msg += "\n".join(f"• {warning}" for warning in validation_result["warnings"])
+            messagebox.showerror("Validation Error", error_msg)
+            return
+        
+        # Show warnings if any
+        if validation_result["warnings"]:
+            warning_msg = "The following warnings were found:\n\n"
+            warning_msg += "\n".join(f"• {warning}" for warning in validation_result["warnings"])
+            warning_msg += "\n\nDo you want to continue?"
+            if not messagebox.askyesno("Warnings", warning_msg):
+                return
+        
+        # Create the listing
+        result = self.ebay_integration.create_listing(item)
+        
+        if result["success"]:
+            success_msg = f"Listing created successfully!\n\n"
+            success_msg += f"Item ID: {result['item_id']}\n"
+            success_msg += f"URL: {result['listing_url']}\n\n"
+            success_msg += "Note: This is a mock listing for demonstration."
+            messagebox.showinfo("Success", success_msg)
+        else:
+            messagebox.showerror("Error", f"Failed to create listing:\n{result['error']}")
     
     def export_to_csv(self):
         """Export the queue to a CSV file."""
