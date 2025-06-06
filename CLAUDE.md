@@ -206,6 +206,53 @@ This is an eBay listing management tool suite with photo processing, price analy
 - ✅ **ALWAYS** push changes before declaring completion
 - ✅ **ALWAYS** verify changes are on GitHub before user communication
 
+## 🚨 MANDATORY RULE COMPLIANCE VERIFICATION 🚨
+
+**EVERY action that modifies code MUST be followed by explicit rule compliance verification.**
+
+### Required Post-Action Verification Statement:
+After EVERY code change, edit, commit, or push, I MUST include this verification:
+
+```
+✅ RULE COMPLIANCE CHECK:
+- Changes made: [brief description]
+- All versions updated: [Yes/No - list which versions]
+- Documentation updated: [Yes/No - list which docs]
+- Committed: [Yes/No - commit hash if yes]
+- Pushed to GitHub: [Yes/No - verification]
+- Status declaration: [ONLY if pushed - "Complete/Fixed" OR "Work in progress"]
+```
+
+### Examples:
+
+**CORRECT - After completing work:**
+```
+✅ RULE COMPLIANCE CHECK:
+- Changes made: Fixed installer batch file generation
+- All versions updated: Yes - install_complete.bat only (installer-level fix)
+- Documentation updated: N/A - no new features, just bug fix
+- Committed: Yes - commit 4433bdc
+- Pushed to GitHub: Yes - verified on GitHub
+- Status declaration: Installer fix complete and available on GitHub
+```
+
+**CORRECT - After making changes but before commit:**
+```
+✅ RULE COMPLIANCE CHECK:
+- Changes made: Updated processor.py with new reset functionality
+- All versions updated: No - still need to update windows_installer version
+- Documentation updated: No - need to update README.md
+- Committed: No
+- Pushed to GitHub: No
+- Status declaration: Work in progress - NOT declaring anything complete
+```
+
+### Enforcement:
+- **MANDATORY**: Every code modification must include rule compliance verification
+- **NO EXCEPTIONS**: Even small changes require verification statement
+- **PREVENTS VIOLATIONS**: Forces conscious check of rules before making claims
+- **USER ACCOUNTABILITY**: Provides clear record of what was actually done vs claimed
+
 ## 🔖 VERSION DISPLAY REQUIREMENT
 
 **ALL GUI applications MUST have Help > About menu showing version information!**
