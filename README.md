@@ -24,43 +24,35 @@ A comprehensive automation suite for creating eBay listings using AI/LLM technol
 
 ## Installation
 
-### 🚀 **New Complete Installers (Recommended)**
+### 🚀 **Single Installers (Recommended)**
 
-These installers **install and verify all code files every time**, supporting both fresh installations and updates:
+Simple, reliable installers for each platform:
 
 #### Windows
 ```bash
-# Complete installer - handles updates safely
-install_complete.bat
+# Single installer for Windows
+install.bat
 ```
 
 #### Linux
 ```bash
-# Complete installer with verification
-./install_complete.sh
+# Single installer for Linux
+./install.sh
 ```
 
 #### macOS  
 ```bash
-# Complete installer optimized for macOS
-./install_complete_mac.sh
+# Single installer for macOS
+./install_mac.sh
 ```
 
-### ✨ **What Complete Installers Do:**
-- ✅ **Install/Update ALL Code Files** - Ensures latest features every time
-- ✅ **Backup Existing Installation** - Safe updates with rollback option
-- ✅ **Verify All Features Work** - Tests Reset Tags and version display
+### ✨ **What These Installers Do:**
 - ✅ **Install Dependencies** - Handles Python packages automatically
-- ✅ **Create Shortcuts/Launchers** - Platform-appropriate application shortcuts
-- ✅ **Test Installation** - Confirms everything works before declaring success
+- ✅ **Create Application Shortcuts** - Desktop shortcuts for all tools
+- ✅ **Configure Application Launchers** - Platform-appropriate batch/shell files
+- ✅ **Verify Installation** - Tests that all dependencies work correctly
+- ✅ **Setup Data Directories** - Creates folders for logs, exports, config
 
-### 📋 **Legacy Installers (Dependencies Only)**
-
-For dependency installation only (use complete installers instead):
-
-#### Windows: `install_dependencies.bat`
-#### macOS: `./install_dependencies_mac.sh` 
-#### Linux: `./install_dependencies.sh`
 
 ## Quick Start
 
