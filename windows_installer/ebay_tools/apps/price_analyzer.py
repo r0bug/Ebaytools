@@ -175,18 +175,87 @@ class PriceAnalyzer:
         
         return " ".join(cleaned_words)
     
+    def _fetch_real_sold_items(self, search_terms, limit=10):
+        """
+        Fetch real sold items using unofficial eBay sold items API.
+        
+        Uses the API mentioned: https://ebay-sold-items-api.herokuapp.com/findCompletedItems
+        """
+        try:
+            import requests
+            import json
+            from urllib.parse import quote
+            
+            # API endpoint for sold items
+            url = "https://ebay-sold-items-api.herokuapp.com/findCompletedItems"
+            
+            # Prepare payload
+            payload = {
+                "keywords": search_terms,
+                "excluded_keywords": "broken damaged parts repair for parts only read description",
+                "max_search_results": str(min(limit, 100)),  # API limit
+                "category_id": "",  # Empty for all categories
+                "remove_outliers": True,
+                "site_id": "0"  # US site
+            }
+            
+            headers = {
+                'Content-Type': 'application/json',
+                'User-Agent': 'eBay Tools Price Analyzer'
+            }
+            
+            # Make request with timeout
+            response = requests.post(url, headers=headers, data=json.dumps(payload), timeout=10)
+            
+            if response.status_code == 200:
+                data = response.json()
+                
+                if 'items' in data and data['items']:
+                    sold_items = []
+                    for item in data['items'][:limit]:
+                        # Convert API response to our format
+                        sold_item = {
+                            "title": item.get('title', 'Unknown Item'),
+                            "price": float(item.get('price', {}).get('value', 0)),
+                            "shipping": float(item.get('shippingCost', {}).get('value', 0)),
+                            "sold_date": item.get('endTime', '').split('T')[0] if 'endTime' in item else '',
+                            "url": item.get('viewItemURL', ''),
+                            "condition": item.get('condition', {}).get('conditionDisplayName', 'Unknown'),
+                            "item_id": item.get('itemId', '')
+                        }
+                        sold_items.append(sold_item)
+                    
+                    print(f"Successfully fetched {len(sold_items)} real sold items from API")
+                    return sold_items
+                else:
+                    print("API returned no sold items")
+            else:
+                print(f"API request failed with status {response.status_code}")
+        
+        except ImportError:
+            print("requests library not available for real API calls")
+        except Exception as e:
+            print(f"Error fetching real sold data: {e}")
+        
+        return None
+    
     def _fetch_sold_items(self, search_terms, limit=10):
         """
         Fetch sold items from eBay.
         
-        In a real implementation, this would use the eBay API or scrape eBay sold listings.
-        For demo purposes, we'll generate simulated data.
+        First tries unofficial API, falls back to simulated data for demo.
         """
+        # Try to fetch real sold data first
+        try:
+            real_sold_items = self._fetch_real_sold_items(search_terms, limit)
+            if real_sold_items:
+                return real_sold_items
+        except Exception as e:
+            print(f"Note: Could not fetch real sold data ({e}), using simulated data")
+        
+        # Fall back to simulated data for demo purposes
         # IMPORTANT: In a production environment, replace this with actual eBay API calls
         # or proper web scraping with appropriate rate limiting and compliance with eBay's TOS
-        
-        # For demonstration purposes only, generate simulated sold items
-        # In a real implementation, you would use the eBay API or properly scrape eBay
         def simulate_sold_items(search_terms, count=10):
             """Generate simulated sold items for demonstration."""
             base_price = random.uniform(20, 200)
@@ -201,9 +270,10 @@ class PriceAnalyzer:
                 days_ago = random.randint(1, 90)
                 sold_date = datetime.now() - timedelta(days=days_ago)
                 
-                # Create proper eBay sold listings search URL
+                # Create working eBay sold listings search URL
+                # The correct way to search sold listings on eBay
                 encoded_search = search_terms.replace(' ', '+').replace('&', '%26')
-                sold_url = f"https://www.ebay.com/sch/i.html?_from=R40&_nkw={encoded_search}&_sacat=0&LH_Sold=1&LH_Complete=1&_sop=13"
+                sold_url = f"https://www.ebay.com/sch/i.html?_nkw={encoded_search}&_sacat=0&_odkw=&_osacat=0&_ipg=240&_fosrp=1&_stpos=&LH_Sold=1&LH_Complete=1"
                 
                 item = {
                     "title": f"{search_terms} - Sample Item {i+1}",
@@ -780,16 +850,26 @@ class PriceAnalyzerGUI(tk.Toplevel):
         instruction_frame.pack(fill=tk.X, padx=10, pady=5)
         ttk.Label(
             instruction_frame, 
-            text="💡 Double-click any row to open eBay SOLD listings search in your browser",
+            text="💡 Double-click any row to view the actual eBay listing (if real data) or search sold listings",
             font=("Segoe UI", 9),
             foreground="blue"
         ).pack(anchor=tk.W)
         
+        # Check if we're using real or simulated data to display appropriate message
+        using_real_data = any(not item["title"].endswith(f"Sample Item {i+1}") for i, item in enumerate(results["sold_items"], 1))
+        
+        if using_real_data:
+            info_text = "✅ Using real sold listing data from eBay API. Links open actual sold listings."
+            info_color = "green"
+        else:
+            info_text = "ℹ️  Demo mode: Simulated data shown. Links open eBay sold listings search for verification."
+            info_color = "gray"
+        
         ttk.Label(
             instruction_frame, 
-            text="ℹ️  Note: Demo mode shows simulated data. Links open real eBay sold listings for the complete item details.",
+            text=info_text,
             font=("Segoe UI", 8),
-            foreground="gray"
+            foreground=info_color
         ).pack(anchor=tk.W, pady=(2,0))
         
         # Initial validation
