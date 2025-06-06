@@ -17,6 +17,8 @@ from datetime import datetime, timedelta
 import threading
 import urllib.parse
 import statistics
+import csv
+import os
 
 try:
     import requests
@@ -33,6 +35,159 @@ except ImportError:
     print("Running in standalone mode without ebay_tools package")
 
 
+class eBaySearchURLGenerator:
+    """
+    Generate eBay search URLs for manual research and verification.
+    Based on the comprehensive eBay API guide recommendations.
+    """
+    
+    BASE_URL = "https://www.ebay.com/sch/i.html"
+    
+    @staticmethod
+    def generate_sold_listings_url(
+        keywords, 
+        price_min=None, 
+        price_max=None,
+        condition=None,
+        sold_days_ago=None,
+        items_per_page=200,
+        category_id=None
+    ):
+        """Generate URL for eBay sold listings search with comprehensive filtering."""
+        
+        params = {
+            '_nkw': keywords,
+            'LH_Sold': '1',        # Show sold items
+            'LH_Complete': '1',    # Show completed listings
+            '_ipg': str(min(items_per_page, 200)),  # Items per page (max 200)
+            '_sop': '13'           # Sort by newest first
+        }
+        
+        # Price range filters
+        if price_min:
+            params['_udlo'] = str(price_min)
+        if price_max:
+            params['_udhi'] = str(price_max)
+        
+        # Category filter
+        if category_id:
+            params['_sacat'] = str(category_id)
+        
+        # Condition filters
+        condition_codes = {
+            'new': '1000',
+            'open_box': '1500', 
+            'refurbished': '2000,2010,2020,2030',
+            'used': '3000,4000,5000,6000,7000'
+        }
+        if condition and condition in condition_codes:
+            params['LH_ItemCondition'] = condition_codes[condition]
+        
+        # Date range (last N days)
+        if sold_days_ago:
+            params['LH_DAYS_TYPE'] = '1'
+            params['LH_DAYS'] = str(sold_days_ago)
+        
+        # Build URL
+        query_string = urllib.parse.urlencode(params)
+        return f"{eBaySearchURLGenerator.BASE_URL}?{query_string}"
+    
+    @staticmethod
+    def generate_current_listings_url(keywords, **kwargs):
+        """Generate URL for current active listings."""
+        params = {
+            '_nkw': keywords,
+            '_ipg': str(min(kwargs.get('items_per_page', 200), 200)),
+            '_sop': '13'  # Sort by newest first
+        }
+        
+        # Add price filters if specified
+        if 'price_min' in kwargs and kwargs['price_min']:
+            params['_udlo'] = str(kwargs['price_min'])
+        if 'price_max' in kwargs and kwargs['price_max']:
+            params['_udhi'] = str(kwargs['price_max'])
+        
+        # Add category if specified
+        if 'category_id' in kwargs and kwargs['category_id']:
+            params['_sacat'] = str(kwargs['category_id'])
+        
+        query_string = urllib.parse.urlencode(params)
+        return f"{eBaySearchURLGenerator.BASE_URL}?{query_string}"
+
+
+class ResearchDataManager:
+    """Manage research data export and documentation workflow."""
+    
+    def __init__(self):
+        self.research_data = []
+    
+    def create_research_template(self, product_keyword, search_terms):
+        """Create a template for manual research documentation."""
+        return {
+            'timestamp': datetime.now().isoformat(),
+            'product': product_keyword,
+            'search_terms': search_terms,
+            'research_method': 'manual_verification',
+            'data_source': 'ebay_sold_listings_search',
+            'urls': {
+                'sold_listings': None,  # To be filled
+                'current_listings': None  # To be filled
+            },
+            'findings': {
+                'average_price': None,
+                'sales_volume': None,
+                'sell_through_rate': None,
+                'competition_level': None,
+                'trend_direction': None,
+                'seasonal_patterns': None,
+                'notes': ""
+            },
+            'next_research_date': (datetime.now() + timedelta(days=30)).isoformat(),
+            'action_items': [],
+            'confidence_level': 'medium'  # low, medium, high
+        }
+    
+    def export_research_data(self, file_path, format='json'):
+        """Export collected research data."""
+        try:
+            if format == 'json':
+                with open(file_path, 'w') as f:
+                    json.dump(self.research_data, f, indent=2)
+            elif format == 'csv':
+                self._export_to_csv(file_path)
+            return True
+        except Exception as e:
+            print(f"Export failed: {e}")
+            return False
+    
+    def _export_to_csv(self, file_path):
+        """Export research data to CSV format."""
+        if not self.research_data:
+            return
+        
+        fieldnames = [
+            'timestamp', 'product', 'search_terms', 'research_method',
+            'average_price', 'sales_volume', 'confidence_level', 'notes'
+        ]
+        
+        with open(file_path, 'w', newline='', encoding='utf-8') as f:
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            writer.writeheader()
+            
+            for item in self.research_data:
+                row = {
+                    'timestamp': item['timestamp'],
+                    'product': item['product'],
+                    'search_terms': item['search_terms'],
+                    'research_method': item['research_method'],
+                    'average_price': item['findings'].get('average_price', ''),
+                    'sales_volume': item['findings'].get('sales_volume', ''),
+                    'confidence_level': item['confidence_level'],
+                    'notes': item['findings'].get('notes', '')
+                }
+                writer.writerow(row)
+
+
 class PriceAnalyzer:
     """eBay price analyzer that finds similar sold items and recommends pricing."""
     
@@ -40,6 +195,8 @@ class PriceAnalyzer:
         """Initialize the price analyzer with optional config file."""
         self.config = self._load_config(config_file)
         self.user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+        self.url_generator = eBaySearchURLGenerator()
+        self.research_manager = ResearchDataManager()
         
     def _load_config(self, config_file=None):
         """Load configuration from file or use defaults."""
@@ -106,14 +263,22 @@ class PriceAnalyzer:
                     "current_items": current_items
                 }
             
-            # Return result with current items but no pricing suggestion
+            # Return result with current items but no pricing suggestion + research tools
             return {
                 "success": False,
                 "message": f"No sold items found for pricing analysis. Showing {len(current_items)} current listings for reference.",
                 "search_terms": search_terms,
                 "sold_items": sold_items,
                 "current_items": current_items,
-                "requires_manual_pricing": True
+                "requires_manual_pricing": True,
+                "research_tools": {
+                    "manual_checklist": self.generate_manual_research_checklist(search_terms),
+                    "third_party_recommendation": self.get_third_party_recommendations(search_terms),
+                    "verification_urls": {
+                        "sold_listings": self.url_generator.generate_sold_listings_url(search_terms, sold_days_ago=90),
+                        "current_listings": self.url_generator.generate_current_listings_url(search_terms)
+                    }
+                }
             }
             
         # Analyze prices
@@ -122,8 +287,8 @@ class PriceAnalyzer:
         # Calculate suggested price
         suggested_price = self._calculate_suggested_price(price_analysis, markup)
         
-        # Return complete results
-        return {
+        # Return complete results with research tools
+        result = {
             "success": True,
             "search_terms": search_terms,
             "sold_items": sold_items,
@@ -131,8 +296,18 @@ class PriceAnalyzer:
             "price_analysis": price_analysis,
             "suggested_price": suggested_price,
             "markup_percent": markup,
-            "analyzed_at": datetime.now().isoformat()
+            "analyzed_at": datetime.now().isoformat(),
+            "research_tools": {
+                "manual_checklist": self.generate_manual_research_checklist(search_terms),
+                "third_party_recommendation": self.get_third_party_recommendations(search_terms),
+                "verification_urls": {
+                    "sold_listings": self.url_generator.generate_sold_listings_url(search_terms, sold_days_ago=90),
+                    "current_listings": self.url_generator.generate_current_listings_url(search_terms)
+                }
+            }
         }
+        
+        return result
     
     def _extract_search_terms(self, item_data):
         """Extract comprehensive search terms from item data."""
@@ -293,13 +468,19 @@ class PriceAnalyzer:
         except Exception as e:
             print(f"Note: Could not fetch real sold data ({e}), using simulated data")
         
-        # Fall back to simulated data for demo purposes
-        # IMPORTANT: In a production environment, replace this with actual eBay API calls
-        # or proper web scraping with appropriate rate limiting and compliance with eBay's TOS
-        def simulate_sold_items(search_terms, count=10):
-            """Generate simulated sold items for demonstration."""
+        # Fall back to simulated data with proper eBay URLs for manual verification
+        # Uses legitimate eBay search URLs as recommended in the comprehensive API guide
+        def simulate_sold_items_with_verification_urls(search_terms, count=10):
+            """Generate simulated sold items with proper eBay verification URLs."""
             base_price = random.uniform(20, 200)
             variation = base_price * 0.3  # 30% variation
+            
+            # Generate proper eBay sold listings URL for manual verification
+            verification_url = self.url_generator.generate_sold_listings_url(
+                keywords=search_terms,
+                sold_days_ago=90,
+                items_per_page=200
+            )
             
             sold_items = []
             for i in range(count):
@@ -310,26 +491,35 @@ class PriceAnalyzer:
                 days_ago = random.randint(1, 90)
                 sold_date = datetime.now() - timedelta(days=days_ago)
                 
-                # Create working eBay sold listings search URL
-                # The correct way to search sold listings on eBay
-                encoded_search = search_terms.replace(' ', '+').replace('&', '%26')
-                sold_url = f"https://www.ebay.com/sch/i.html?_nkw={encoded_search}&_sacat=0&_odkw=&_osacat=0&_ipg=240&_fosrp=1&_stpos=&LH_Sold=1&LH_Complete=1"
-                
+                # Create individual item data with verification URL
                 item = {
                     "title": f"{search_terms} - Sample Item {i+1}",
                     "price": round(price, 2),
                     "shipping": round(random.uniform(0, 15), 2),
                     "sold_date": sold_date.strftime("%Y-%m-%d"),
-                    "url": sold_url,
+                    "url": verification_url,  # Use proper eBay search URL
                     "condition": random.choice(["New", "Used", "Open box", "Refurbished"]),
-                    "item_id": f"{random.randint(100000000, 999999999)}"
+                    "item_id": f"{random.randint(100000000, 999999999)}",
+                    "verification_url": verification_url,  # Additional field for research
+                    "research_notes": "Manual verification recommended via eBay sold listings search"
                 }
                 sold_items.append(item)
                 
-            return sold_items
+            # Create research template for manual follow-up
+            research_template = self.research_manager.create_research_template(
+                search_terms, search_terms
+            )
+            research_template['urls']['sold_listings'] = verification_url
+            research_template['urls']['current_listings'] = self.url_generator.generate_current_listings_url(search_terms)
             
-        # In a real implementation, replace this with actual eBay API or web scraping code
-        sold_items = simulate_sold_items(search_terms, limit)
+            return sold_items, research_template
+            
+        # Generate simulated data with proper verification URLs and research templates
+        sold_items, research_template = simulate_sold_items_with_verification_urls(search_terms, limit)
+        
+        # Store research template for potential export
+        self.last_research_template = research_template
+        
         return sold_items
 
     def _fetch_current_listings(self, search_terms, limit=10):
@@ -339,10 +529,16 @@ class PriceAnalyzer:
         In a real implementation, this would use the eBay API or scrape current listings.
         For demo purposes, we'll generate simulated data.
         """
-        def simulate_current_listings(search_terms, count=10):
-            """Generate simulated current listings for demonstration."""
+        def simulate_current_listings_with_verification_urls(search_terms, count=10):
+            """Generate simulated current listings with proper eBay verification URLs."""
             base_price = random.uniform(25, 250)
             variation = base_price * 0.4  # 40% variation for active listings
+            
+            # Generate proper eBay current listings URL for manual verification
+            verification_url = self.url_generator.generate_current_listings_url(
+                keywords=search_terms,
+                items_per_page=200
+            )
             
             current_items = []
             for i in range(count):
@@ -358,17 +554,19 @@ class PriceAnalyzer:
                     "price": round(price, 2),
                     "shipping": round(random.uniform(0, 20), 2),
                     "list_date": list_date.strftime("%Y-%m-%d"),
-                    "url": f"https://www.ebay.com/itm/{random.randint(100000000, 999999999)}",
+                    "url": verification_url,  # Use proper eBay search URL
                     "condition": random.choice(["New", "Used", "Open box", "Refurbished"]),
                     "item_id": f"{random.randint(100000000, 999999999)}",
                     "watchers": random.randint(0, 15),
-                    "views": random.randint(10, 200)
+                    "views": random.randint(10, 200),
+                    "verification_url": verification_url,
+                    "research_notes": "Manual verification recommended via eBay current listings search"
                 }
                 current_items.append(item)
                 
             return current_items
             
-        current_items = simulate_current_listings(search_terms, limit)
+        current_items = simulate_current_listings_with_verification_urls(search_terms, limit)
         return current_items
     
     def _analyze_prices(self, sold_items):
@@ -414,6 +612,93 @@ class PriceAnalyzer:
         suggested_price = round(suggested_price - 0.01, 0) + 0.99
         
         return suggested_price
+    
+    def export_research_template(self, file_path=None):
+        """Export the last research template for manual completion."""
+        if not hasattr(self, 'last_research_template'):
+            return False
+        
+        if not file_path:
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            file_path = f"ebay_research_{timestamp}.json"
+        
+        try:
+            with open(file_path, 'w') as f:
+                json.dump(self.last_research_template, f, indent=2)
+            return file_path
+        except Exception as e:
+            print(f"Export failed: {e}")
+            return False
+    
+    def get_third_party_recommendations(self, search_terms, budget_range='medium'):
+        """Provide recommendations for legitimate third-party research services."""
+        recommendations = {
+            'budget': {
+                'service': 'WatchCount + Manual Research',
+                'cost': 'Free tier available',
+                'features': ['Basic auction analysis', 'Manual eBay research'],
+                'best_for': 'Occasional research, low volume'
+            },
+            'medium': {
+                'service': 'ZIK Analytics Basic',
+                'cost': '$97/month',
+                'features': ['eBay sold listings analysis', 'Competitor research', 'Keyword optimization'],
+                'best_for': 'Regular sellers, moderate volume'
+            },
+            'premium': {
+                'service': 'ZIK Analytics Pro',
+                'cost': '$497/month',
+                'features': ['Full research suite', 'API access', 'Advanced analytics'],
+                'best_for': 'High-volume sellers, professional operations'
+            }
+        }
+        
+        return recommendations.get(budget_range, recommendations['medium'])
+    
+    def generate_manual_research_checklist(self, search_terms):
+        """Generate a checklist for manual eBay research."""
+        urls = {
+            'sold_listings': self.url_generator.generate_sold_listings_url(
+                keywords=search_terms,
+                sold_days_ago=90
+            ),
+            'current_listings': self.url_generator.generate_current_listings_url(
+                keywords=search_terms
+            ),
+            'sold_30_days': self.url_generator.generate_sold_listings_url(
+                keywords=search_terms,
+                sold_days_ago=30
+            )
+        }
+        
+        checklist = {
+            'research_steps': [
+                'Open eBay sold listings URL in browser',
+                'Review first 2-3 pages of sold items',
+                'Note price range and average selling price',
+                'Check shipping costs and total prices',
+                'Identify seasonal patterns if visible',
+                'Check current listings for competition',
+                'Document findings in research template'
+            ],
+            'urls': urls,
+            'data_to_collect': [
+                'Average sold price',
+                'Price range (min/max)',
+                'Number of listings sold per page',
+                'Common conditions sold',
+                'Shipping cost patterns',
+                'Competition level assessment'
+            ],
+            'red_flags': [
+                'Very few sold listings',
+                'Wide price variations',
+                'Many "for parts" listings',
+                'Seasonal items out of season'
+            ]
+        }
+        
+        return checklist
 
 
 class PriceAnalyzerGUI(tk.Toplevel):
@@ -648,6 +933,10 @@ class PriceAnalyzerGUI(tk.Toplevel):
         # Current listings table
         if "current_items" in results and results["current_items"]:
             self._display_current_listings(parent, results["current_items"])
+        
+        # Research Tools for manual pricing mode
+        if "research_tools" in results:
+            self._display_research_tools(parent, results["research_tools"])
 
     def _display_current_listings(self, parent, current_items):
         """Display current active listings for reference."""
@@ -924,8 +1213,155 @@ class PriceAnalyzerGUI(tk.Toplevel):
             foreground="orange"
         ).pack(anchor=tk.W, pady=(2,0))
         
+        # Research Tools and Alternatives Section
+        if "research_tools" in results:
+            self._display_research_tools(parent, results["research_tools"])
+        
         # Initial validation
         validate_and_approve()
+    
+    def _display_research_tools(self, parent, research_tools):
+        """Display research tools and manual verification options."""
+        tools_frame = ttk.LabelFrame(parent, text="🔍 Research Tools & Manual Verification")
+        tools_frame.pack(fill=tk.X, padx=10, pady=5)
+        
+        # Create notebook for different research options
+        tools_notebook = ttk.Notebook(tools_frame)
+        tools_notebook.pack(fill=tk.X, padx=10, pady=5)
+        
+        # Manual Verification Tab
+        manual_frame = ttk.Frame(tools_notebook)
+        tools_notebook.add(manual_frame, text="Manual Verification")
+        
+        # URLs for manual research
+        urls_frame = ttk.LabelFrame(manual_frame, text="Verification URLs")
+        urls_frame.pack(fill=tk.X, padx=5, pady=5)
+        
+        verification_urls = research_tools.get("verification_urls", {})
+        
+        # Sold listings URL
+        sold_frame = ttk.Frame(urls_frame)
+        sold_frame.pack(fill=tk.X, padx=5, pady=2)
+        ttk.Label(sold_frame, text="Sold Listings:", font=("Segoe UI", 9, "bold")).pack(side=tk.LEFT)
+        sold_url_button = ttk.Button(
+            sold_frame,
+            text="Open eBay Sold Listings",
+            command=lambda: webbrowser.open(verification_urls.get("sold_listings", ""))
+        )
+        sold_url_button.pack(side=tk.RIGHT, padx=5)
+        
+        # Current listings URL
+        current_frame = ttk.Frame(urls_frame)
+        current_frame.pack(fill=tk.X, padx=5, pady=2)
+        ttk.Label(current_frame, text="Current Listings:", font=("Segoe UI", 9, "bold")).pack(side=tk.LEFT)
+        current_url_button = ttk.Button(
+            current_frame,
+            text="Open eBay Current Listings",
+            command=lambda: webbrowser.open(verification_urls.get("current_listings", ""))
+        )
+        current_url_button.pack(side=tk.RIGHT, padx=5)
+        
+        # Manual research checklist
+        checklist_frame = ttk.LabelFrame(manual_frame, text="Research Checklist")
+        checklist_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        
+        checklist_text = tk.Text(checklist_frame, height=8, wrap=tk.WORD, font=("Segoe UI", 9))
+        checklist_text.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        
+        # Add checklist content
+        manual_checklist = research_tools.get("manual_checklist", {})
+        checklist_content = "Manual Research Steps:\n\n"
+        for i, step in enumerate(manual_checklist.get("research_steps", []), 1):
+            checklist_content += f"{i}. {step}\n"
+        
+        checklist_content += "\nData to Collect:\n"
+        for item in manual_checklist.get("data_to_collect", []):
+            checklist_content += f"• {item}\n"
+        
+        checklist_content += "\nRed Flags to Watch:\n"
+        for flag in manual_checklist.get("red_flags", []):
+            checklist_content += f"⚠️ {flag}\n"
+        
+        checklist_text.insert("1.0", checklist_content)
+        checklist_text.config(state=tk.DISABLED)
+        
+        # Third-Party Services Tab
+        services_frame = ttk.Frame(tools_notebook)
+        tools_notebook.add(services_frame, text="Third-Party Services")
+        
+        # Service recommendation
+        recommendation = research_tools.get("third_party_recommendation", {})
+        
+        rec_frame = ttk.LabelFrame(services_frame, text="Recommended Service")
+        rec_frame.pack(fill=tk.X, padx=5, pady=5)
+        
+        ttk.Label(
+            rec_frame,
+            text=f"Service: {recommendation.get('service', 'N/A')}",
+            font=("Segoe UI", 10, "bold")
+        ).pack(anchor=tk.W, padx=10, pady=2)
+        
+        ttk.Label(
+            rec_frame,
+            text=f"Cost: {recommendation.get('cost', 'N/A')}",
+            font=("Segoe UI", 9)
+        ).pack(anchor=tk.W, padx=10, pady=1)
+        
+        ttk.Label(
+            rec_frame,
+            text=f"Best for: {recommendation.get('best_for', 'N/A')}",
+            font=("Segoe UI", 9)
+        ).pack(anchor=tk.W, padx=10, pady=1)
+        
+        features_label = ttk.Label(
+            rec_frame,
+            text="Features: " + ", ".join(recommendation.get('features', [])),
+            font=("Segoe UI", 9),
+            wraplength=400
+        )
+        features_label.pack(anchor=tk.W, padx=10, pady=2)
+        
+        # Export Tab
+        export_frame = ttk.Frame(tools_notebook)
+        tools_notebook.add(export_frame, text="Export Research")
+        
+        export_info_frame = ttk.LabelFrame(export_frame, text="Research Data Export")
+        export_info_frame.pack(fill=tk.X, padx=5, pady=5)
+        
+        ttk.Label(
+            export_info_frame,
+            text="Export research template for manual completion and documentation.",
+            font=("Segoe UI", 9)
+        ).pack(anchor=tk.W, padx=10, pady=5)
+        
+        export_button_frame = ttk.Frame(export_info_frame)
+        export_button_frame.pack(fill=tk.X, padx=10, pady=5)
+        
+        def export_research_template():
+            try:
+                file_path = self.analyzer.export_research_template()
+                if file_path:
+                    messagebox.showinfo(
+                        "Export Successful",
+                        f"Research template exported to:\n{file_path}\n\nComplete the template with your manual research findings."
+                    )
+                else:
+                    messagebox.showerror("Export Failed", "Could not export research template.")
+            except Exception as e:
+                messagebox.showerror("Export Error", f"Export failed: {str(e)}")
+        
+        ttk.Button(
+            export_button_frame,
+            text="Export Research Template",
+            command=export_research_template
+        ).pack(side=tk.LEFT, padx=5)
+        
+        ttk.Label(
+            export_info_frame,
+            text="Template includes verification URLs, data collection fields, and research guidelines.",
+            font=("Segoe UI", 8),
+            foreground="gray"
+        ).pack(anchor=tk.W, padx=10, pady=(0,5))
         
     def _apply_price(self):
         """Apply the approved price to the item."""

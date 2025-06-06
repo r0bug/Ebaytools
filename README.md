@@ -6,6 +6,7 @@ A comprehensive automation suite for creating eBay listings using AI/LLM technol
 
 - 🔄 **Processing Tags Reset System** - Individual, type-based, and global reset options
 - 📋 **Interactive Pricing with User Approval** - Full transparency and research display  
+- 🔍 **Professional Research Tools** - Manual verification workflows and third-party service recommendations
 - ℹ️ **Version Display in All Applications** - Help > About shows v3.0.0 across suite
 - 🛠️ **Complete Installers** - Overwrite previous versions safely with verification
 - 🎯 **Enhanced UI Integration** - Reset button and pricing controls in main workflow
@@ -14,6 +15,7 @@ A comprehensive automation suite for creating eBay listings using AI/LLM technol
 
 - 🤖 **AI-Powered Description Generation** - Uses LLaVA, Claude, or GPT-4 Vision APIs
 - 💰 **Interactive Pricing Analysis** - Research eBay sold listings with user approval
+- 🔍 **Professional Research Tools** - Manual verification URLs, checklists, and export templates
 - 🔄 **Processing Tags Reset** - Reset individual items, by type, or globally
 - 📸 **Photo Processing** - Batch image processing with EXIF handling
 - 📊 **CSV Export** - Generates eBay-compatible CSV files for bulk uploads
@@ -77,13 +79,15 @@ install.bat
    ```bash
    python -m ebay_tools.apps.price_analyzer
    ```
-   ✨ *User approval required for all pricing decisions*
+   ✨ *User approval required, includes manual verification tools and third-party service recommendations*
 
 5. **Export** - Generate CSV for eBay bulk upload
 
 ### 🎯 **New Features to Try:**
 - **Reset Processing Tags**: Use "🔄 Reset Tags" button in Processor for individual, type-based, or global resets
 - **Interactive Pricing**: Price Analyzer now shows research data and requires user approval
+- **Professional Research**: Access manual verification URLs, research checklists, and export templates
+- **Third-Party Services**: Get recommendations for ZIK Analytics, WatchCount, and other legitimate tools
 - **Version Verification**: Check Help > About in any application to confirm v3.0.0
 
 ## Applications
@@ -95,7 +99,7 @@ install.bat
 - **Viewer Tool** (`viewer.py`) - Review and export results  
   *✨ Updated with standardized version display*
 - **Price Analyzer** (`price_analyzer.py`) - Interactive market price analysis  
-  *✨ User approval workflow with research transparency*
+  *✨ User approval workflow with research transparency, manual verification tools, and third-party service recommendations*
 - **Main Launcher** (`main_launcher.py`) - Central hub for launching all tools  
   *✨ New centralized launcher with version information*
 - **Gallery Creator** (`gallery_creator.py`) - Create HTML classified ad galleries
