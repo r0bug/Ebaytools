@@ -453,11 +453,23 @@ class EbayLLMProcessor:
     
     def show_about(self):
         """Show about dialog with version information."""
+        version = "Unknown"
         try:
+            # Try importing from ebay_tools package
             from ebay_tools import __version__
             version = __version__
         except ImportError:
-            version = "Unknown"
+            try:
+                # Try reading version from __init__.py file directly
+                import os
+                init_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), "__init__.py")
+                with open(init_file, 'r') as f:
+                    for line in f:
+                        if line.strip().startswith('__version__'):
+                            version = line.split('=')[1].strip().strip('"\'')
+                            break
+            except Exception:
+                version = "3.0.0"  # Fallback to known version
         
         about_text = f"""eBay LLM Photo Processor
 Version: {version}
