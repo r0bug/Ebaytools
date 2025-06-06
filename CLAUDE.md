@@ -177,22 +177,29 @@ This is an eBay listing management tool suite with photo processing, price analy
 **NEVER declare functionality "fixed" or "complete" unless changes are pushed to GitHub!**
 
 ### Required Workflow:
-1. **Implement changes** in local code
-2. **Test functionality** locally 
-3. **Commit changes** with descriptive message
-4. **Push to GitHub** immediately 
-5. **ONLY THEN** declare feature complete
+1. **Implement changes** in main code (`ebay_tools/ebay_tools/`)
+2. **Update ALL installer versions** (`windows_installer/ebay_tools/`)
+3. **Test functionality** in both versions locally 
+4. **Verify all UI elements and features work** in installer versions
+5. **Commit changes** with descriptive message
+6. **Push to GitHub** immediately 
+7. **ONLY THEN** declare feature complete
 
 ### Why This Matters:
 - Users download ZIP files from GitHub, not local changes
-- Declaring features "complete" before pushing creates confusion
-- Users expect advertised functionality to be available in downloads
+- Windows installer is the primary distribution method for most users
+- Declaring features "complete" before updating ALL versions creates confusion
+- Users expect advertised functionality to be available in ALL download formats
 - GitHub is the single source of truth for releases
+- Incomplete installer updates lead to "missing features" reports
 
 ### Enforcement Rules:
-- ❌ **NEVER** say "functionality implemented" without GitHub push
-- ❌ **NEVER** say "ready to use" without GitHub push  
-- ❌ **NEVER** say "complete" without GitHub push
+- ❌ **NEVER** say "functionality implemented" without ALL versions updated
+- ❌ **NEVER** say "ready to use" without Windows installer updated
+- ❌ **NEVER** say "complete" without GitHub push of ALL versions
+- ❌ **NEVER** commit main version without updating installer versions  
+- ✅ **ALWAYS** update windows_installer/ directory before committing
+- ✅ **ALWAYS** verify ALL UI elements work in installer versions
 - ✅ **ALWAYS** push changes before declaring completion
 - ✅ **ALWAYS** verify changes are on GitHub before user communication
 
