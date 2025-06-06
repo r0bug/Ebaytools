@@ -35,6 +35,19 @@ if %errorlevel% == 0 (
     set "PYTHON_CMD=python"
     echo [OK] Found Python using 'python' command
     python --version
+    
+    :: Check if this is Microsoft Store Python (known to cause issues)
+    for /f "tokens=*" %%i in ('where python 2^>nul') do (
+        echo %%i | findstr /C:"WindowsApps" >nul && (
+            echo.
+            echo [INFO] Microsoft Store Python detected.
+            echo Creating Microsoft Store Python compatible launchers...
+            echo.
+            echo Note: If you experience issues, see PYTHON_INSTALLATION_GUIDE.md
+            echo for alternative Python installation options.
+        )
+    )
+    
     goto :check_version
 )
 
@@ -263,149 +276,178 @@ echo.
 :: Create enhanced batch files that try multiple Python commands
 echo Creating enhanced batch files...
 
+:: Create Microsoft Store Python compatible batch files
 echo @echo off > ebay_setup.bat
 echo title eBay Tools - Setup >> ebay_setup.bat
 echo echo Starting eBay Tools - Setup... >> ebay_setup.bat
 echo echo. >> ebay_setup.bat
-echo cd /d "%%~dp0" >> ebay_setup.bat
-echo set PYTHONPATH=%%~dp0;%%PYTHONPATH%% >> ebay_setup.bat
 echo. >> ebay_setup.bat
-echo :: Try different Python commands >> ebay_setup.bat
+echo :: Set working directory and paths >> ebay_setup.bat
+echo set "SCRIPT_DIR=%%~dp0" >> ebay_setup.bat
+echo cd /d "%%SCRIPT_DIR%%" >> ebay_setup.bat
+echo. >> ebay_setup.bat
+echo :: Microsoft Store Python compatibility >> ebay_setup.bat
+echo set "PYTHONPATH=%%SCRIPT_DIR%%;%%PYTHONPATH%%" >> ebay_setup.bat
+echo set "PYTHONIOENCODING=utf-8" >> ebay_setup.bat
+echo. >> ebay_setup.bat
+echo :: Try different Python execution methods >> ebay_setup.bat
 echo python --version ^>nul 2^>^&1 >> ebay_setup.bat
 echo if %%errorlevel%% == 0 ( >> ebay_setup.bat
+echo     echo Using python command... >> ebay_setup.bat
+echo     python "%%SCRIPT_DIR%%ebay_tools\apps\setup.py" >> ebay_setup.bat
+echo     if %%errorlevel%% == 0 goto :success >> ebay_setup.bat
 echo     python -m ebay_tools.apps.setup >> ebay_setup.bat
-echo     goto :end >> ebay_setup.bat
+echo     if %%errorlevel%% == 0 goto :success >> ebay_setup.bat
 echo ^) >> ebay_setup.bat
 echo. >> ebay_setup.bat
 echo py --version ^>nul 2^>^&1 >> ebay_setup.bat
 echo if %%errorlevel%% == 0 ( >> ebay_setup.bat
+echo     echo Using py launcher... >> ebay_setup.bat
+echo     py "%%SCRIPT_DIR%%ebay_tools\apps\setup.py" >> ebay_setup.bat
+echo     if %%errorlevel%% == 0 goto :success >> ebay_setup.bat
 echo     py -m ebay_tools.apps.setup >> ebay_setup.bat
-echo     goto :end >> ebay_setup.bat
+echo     if %%errorlevel%% == 0 goto :success >> ebay_setup.bat
 echo ^) >> ebay_setup.bat
 echo. >> ebay_setup.bat
-echo python3 --version ^>nul 2^>^&1 >> ebay_setup.bat
-echo if %%errorlevel%% == 0 ( >> ebay_setup.bat
-echo     python3 -m ebay_tools.apps.setup >> ebay_setup.bat
-echo     goto :end >> ebay_setup.bat
-echo ^) >> ebay_setup.bat
-echo. >> ebay_setup.bat
-echo echo Python not found! Please install Python 3.8 or higher. >> ebay_setup.bat
+echo echo Python not found or failed to run! >> ebay_setup.bat
+echo echo Try running: python "%%SCRIPT_DIR%%ebay_tools\apps\setup.py" >> ebay_setup.bat
 echo pause >> ebay_setup.bat
+echo goto :end >> ebay_setup.bat
+echo. >> ebay_setup.bat
+echo :success >> ebay_setup.bat
+echo echo. >> ebay_setup.bat
+echo echo Application completed successfully. >> ebay_setup.bat
 echo. >> ebay_setup.bat
 echo :end >> ebay_setup.bat
-echo if %%errorlevel%% neq 0 ( >> ebay_setup.bat
-echo     echo. >> ebay_setup.bat
-echo     echo An error occurred. Check the logs folder for details. >> ebay_setup.bat
-echo     pause >> ebay_setup.bat
-echo ^) >> ebay_setup.bat
 
 echo @echo off > ebay_processor.bat
 echo title eBay Tools - Processor >> ebay_processor.bat
 echo echo Starting eBay Tools - Processor... >> ebay_processor.bat
 echo echo. >> ebay_processor.bat
-echo cd /d "%%~dp0" >> ebay_processor.bat
-echo set PYTHONPATH=%%~dp0;%%PYTHONPATH%% >> ebay_processor.bat
 echo. >> ebay_processor.bat
-echo :: Try different Python commands >> ebay_processor.bat
+echo :: Set working directory and paths >> ebay_processor.bat
+echo set "SCRIPT_DIR=%%~dp0" >> ebay_processor.bat
+echo cd /d "%%SCRIPT_DIR%%" >> ebay_processor.bat
+echo. >> ebay_processor.bat
+echo :: Microsoft Store Python compatibility >> ebay_processor.bat
+echo set "PYTHONPATH=%%SCRIPT_DIR%%;%%PYTHONPATH%%" >> ebay_processor.bat
+echo set "PYTHONIOENCODING=utf-8" >> ebay_processor.bat
+echo. >> ebay_processor.bat
+echo :: Try different Python execution methods >> ebay_processor.bat
 echo python --version ^>nul 2^>^&1 >> ebay_processor.bat
 echo if %%errorlevel%% == 0 ( >> ebay_processor.bat
+echo     echo Using python command... >> ebay_processor.bat
+echo     python "%%SCRIPT_DIR%%ebay_tools\apps\processor.py" >> ebay_processor.bat
+echo     if %%errorlevel%% == 0 goto :success >> ebay_processor.bat
 echo     python -m ebay_tools.apps.processor >> ebay_processor.bat
-echo     goto :end >> ebay_processor.bat
+echo     if %%errorlevel%% == 0 goto :success >> ebay_processor.bat
 echo ^) >> ebay_processor.bat
 echo. >> ebay_processor.bat
 echo py --version ^>nul 2^>^&1 >> ebay_processor.bat
 echo if %%errorlevel%% == 0 ( >> ebay_processor.bat
+echo     echo Using py launcher... >> ebay_processor.bat
+echo     py "%%SCRIPT_DIR%%ebay_tools\apps\processor.py" >> ebay_processor.bat
+echo     if %%errorlevel%% == 0 goto :success >> ebay_processor.bat
 echo     py -m ebay_tools.apps.processor >> ebay_processor.bat
-echo     goto :end >> ebay_processor.bat
+echo     if %%errorlevel%% == 0 goto :success >> ebay_processor.bat
 echo ^) >> ebay_processor.bat
 echo. >> ebay_processor.bat
-echo python3 --version ^>nul 2^>^&1 >> ebay_processor.bat
-echo if %%errorlevel%% == 0 ( >> ebay_processor.bat
-echo     python3 -m ebay_tools.apps.processor >> ebay_processor.bat
-echo     goto :end >> ebay_processor.bat
-echo ^) >> ebay_processor.bat
-echo. >> ebay_processor.bat
-echo echo Python not found! Please install Python 3.8 or higher. >> ebay_processor.bat
+echo echo Python not found or failed to run! >> ebay_processor.bat
+echo echo Try running: python "%%SCRIPT_DIR%%ebay_tools\apps\processor.py" >> ebay_processor.bat
 echo pause >> ebay_processor.bat
+echo goto :end >> ebay_processor.bat
+echo. >> ebay_processor.bat
+echo :success >> ebay_processor.bat
+echo echo. >> ebay_processor.bat
+echo echo Application completed successfully. >> ebay_processor.bat
 echo. >> ebay_processor.bat
 echo :end >> ebay_processor.bat
-echo if %%errorlevel%% neq 0 ( >> ebay_processor.bat
-echo     echo. >> ebay_processor.bat
-echo     echo An error occurred. Check the logs folder for details. >> ebay_processor.bat
-echo     pause >> ebay_processor.bat
-echo ^) >> ebay_processor.bat
 
 echo @echo off > ebay_viewer.bat
 echo title eBay Tools - Viewer >> ebay_viewer.bat
 echo echo Starting eBay Tools - Viewer... >> ebay_viewer.bat
 echo echo. >> ebay_viewer.bat
-echo cd /d "%%~dp0" >> ebay_viewer.bat
-echo set PYTHONPATH=%%~dp0;%%PYTHONPATH%% >> ebay_viewer.bat
 echo. >> ebay_viewer.bat
-echo :: Try different Python commands >> ebay_viewer.bat
+echo :: Set working directory and paths >> ebay_viewer.bat
+echo set "SCRIPT_DIR=%%~dp0" >> ebay_viewer.bat
+echo cd /d "%%SCRIPT_DIR%%" >> ebay_viewer.bat
+echo. >> ebay_viewer.bat
+echo :: Microsoft Store Python compatibility >> ebay_viewer.bat
+echo set "PYTHONPATH=%%SCRIPT_DIR%%;%%PYTHONPATH%%" >> ebay_viewer.bat
+echo set "PYTHONIOENCODING=utf-8" >> ebay_viewer.bat
+echo. >> ebay_viewer.bat
+echo :: Try different Python execution methods >> ebay_viewer.bat
 echo python --version ^>nul 2^>^&1 >> ebay_viewer.bat
 echo if %%errorlevel%% == 0 ( >> ebay_viewer.bat
+echo     echo Using python command... >> ebay_viewer.bat
+echo     python "%%SCRIPT_DIR%%ebay_tools\apps\viewer.py" >> ebay_viewer.bat
+echo     if %%errorlevel%% == 0 goto :success >> ebay_viewer.bat
 echo     python -m ebay_tools.apps.viewer >> ebay_viewer.bat
-echo     goto :end >> ebay_viewer.bat
+echo     if %%errorlevel%% == 0 goto :success >> ebay_viewer.bat
 echo ^) >> ebay_viewer.bat
 echo. >> ebay_viewer.bat
 echo py --version ^>nul 2^>^&1 >> ebay_viewer.bat
 echo if %%errorlevel%% == 0 ( >> ebay_viewer.bat
+echo     echo Using py launcher... >> ebay_viewer.bat
+echo     py "%%SCRIPT_DIR%%ebay_tools\apps\viewer.py" >> ebay_viewer.bat
+echo     if %%errorlevel%% == 0 goto :success >> ebay_viewer.bat
 echo     py -m ebay_tools.apps.viewer >> ebay_viewer.bat
-echo     goto :end >> ebay_viewer.bat
+echo     if %%errorlevel%% == 0 goto :success >> ebay_viewer.bat
 echo ^) >> ebay_viewer.bat
 echo. >> ebay_viewer.bat
-echo python3 --version ^>nul 2^>^&1 >> ebay_viewer.bat
-echo if %%errorlevel%% == 0 ( >> ebay_viewer.bat
-echo     python3 -m ebay_tools.apps.viewer >> ebay_viewer.bat
-echo     goto :end >> ebay_viewer.bat
-echo ^) >> ebay_viewer.bat
-echo. >> ebay_viewer.bat
-echo echo Python not found! Please install Python 3.8 or higher. >> ebay_viewer.bat
+echo echo Python not found or failed to run! >> ebay_viewer.bat
+echo echo Try running: python "%%SCRIPT_DIR%%ebay_tools\apps\viewer.py" >> ebay_viewer.bat
 echo pause >> ebay_viewer.bat
+echo goto :end >> ebay_viewer.bat
+echo. >> ebay_viewer.bat
+echo :success >> ebay_viewer.bat
+echo echo. >> ebay_viewer.bat
+echo echo Application completed successfully. >> ebay_viewer.bat
 echo. >> ebay_viewer.bat
 echo :end >> ebay_viewer.bat
-echo if %%errorlevel%% neq 0 ( >> ebay_viewer.bat
-echo     echo. >> ebay_viewer.bat
-echo     echo An error occurred. Check the logs folder for details. >> ebay_viewer.bat
-echo     pause >> ebay_viewer.bat
-echo ^) >> ebay_viewer.bat
 
 echo @echo off > ebay_price.bat
 echo title eBay Tools - Price Analyzer >> ebay_price.bat
 echo echo Starting eBay Tools - Price Analyzer... >> ebay_price.bat
 echo echo. >> ebay_price.bat
-echo cd /d "%%~dp0" >> ebay_price.bat
-echo set PYTHONPATH=%%~dp0;%%PYTHONPATH%% >> ebay_price.bat
 echo. >> ebay_price.bat
-echo :: Try different Python commands >> ebay_price.bat
+echo :: Set working directory and paths >> ebay_price.bat
+echo set "SCRIPT_DIR=%%~dp0" >> ebay_price.bat
+echo cd /d "%%SCRIPT_DIR%%" >> ebay_price.bat
+echo. >> ebay_price.bat
+echo :: Microsoft Store Python compatibility >> ebay_price.bat
+echo set "PYTHONPATH=%%SCRIPT_DIR%%;%%PYTHONPATH%%" >> ebay_price.bat
+echo set "PYTHONIOENCODING=utf-8" >> ebay_price.bat
+echo. >> ebay_price.bat
+echo :: Try different Python execution methods >> ebay_price.bat
 echo python --version ^>nul 2^>^&1 >> ebay_price.bat
 echo if %%errorlevel%% == 0 ( >> ebay_price.bat
+echo     echo Using python command... >> ebay_price.bat
+echo     python "%%SCRIPT_DIR%%ebay_tools\apps\price_analyzer.py" >> ebay_price.bat
+echo     if %%errorlevel%% == 0 goto :success >> ebay_price.bat
 echo     python -m ebay_tools.apps.price_analyzer >> ebay_price.bat
-echo     goto :end >> ebay_price.bat
+echo     if %%errorlevel%% == 0 goto :success >> ebay_price.bat
 echo ^) >> ebay_price.bat
 echo. >> ebay_price.bat
 echo py --version ^>nul 2^>^&1 >> ebay_price.bat
 echo if %%errorlevel%% == 0 ( >> ebay_price.bat
+echo     echo Using py launcher... >> ebay_price.bat
+echo     py "%%SCRIPT_DIR%%ebay_tools\apps\price_analyzer.py" >> ebay_price.bat
+echo     if %%errorlevel%% == 0 goto :success >> ebay_price.bat
 echo     py -m ebay_tools.apps.price_analyzer >> ebay_price.bat
-echo     goto :end >> ebay_price.bat
+echo     if %%errorlevel%% == 0 goto :success >> ebay_price.bat
 echo ^) >> ebay_price.bat
 echo. >> ebay_price.bat
-echo python3 --version ^>nul 2^>^&1 >> ebay_price.bat
-echo if %%errorlevel%% == 0 ( >> ebay_price.bat
-echo     python3 -m ebay_tools.apps.price_analyzer >> ebay_price.bat
-echo     goto :end >> ebay_price.bat
-echo ^) >> ebay_price.bat
-echo. >> ebay_price.bat
-echo echo Python not found! Please install Python 3.8 or higher. >> ebay_price.bat
+echo echo Python not found or failed to run! >> ebay_price.bat
+echo echo Try running: python "%%SCRIPT_DIR%%ebay_tools\apps\price_analyzer.py" >> ebay_price.bat
 echo pause >> ebay_price.bat
+echo goto :end >> ebay_price.bat
+echo. >> ebay_price.bat
+echo :success >> ebay_price.bat
+echo echo. >> ebay_price.bat
+echo echo Application completed successfully. >> ebay_price.bat
 echo. >> ebay_price.bat
 echo :end >> ebay_price.bat
-echo if %%errorlevel%% neq 0 ( >> ebay_price.bat
-echo     echo. >> ebay_price.bat
-echo     echo An error occurred. Check the logs folder for details. >> ebay_price.bat
-echo     pause >> ebay_price.bat
-echo ^) >> ebay_price.bat
 
 :: Create old style launcher for compatibility
 echo Creating legacy launcher...
@@ -498,7 +540,10 @@ echo.
 echo Thank you for installing eBay Tools!
 echo.
 echo TROUBLESHOOTING:
-echo If you encounter Python path errors, run: diagnose_python.bat
-echo This diagnostic tool will help identify Python installation issues.
+echo This installer now accommodates Microsoft Store Python automatically.
+echo If you still encounter issues:
+echo 1. Try running applications directly: python "ebay_tools\apps\processor.py"
+echo 2. Read PYTHON_INSTALLATION_GUIDE.md for alternative Python options
+echo 3. Run diagnose_python.bat for detailed diagnostics
 echo.
 pause
