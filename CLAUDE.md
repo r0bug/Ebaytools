@@ -22,7 +22,98 @@ This is an eBay listing management tool suite with photo processing, price analy
 
 ## Latest Session Progress (January 6, 2025)
 
-### 🎯 **NEW: Processing Tags Reset System**
+### 🎯 **NEW: Smart Search Modification with Preview Interface**
+
+**Major Enhancement**: Added comprehensive search term modification functionality that allows users to preview and modify search strategies before pricing analysis.
+
+#### **Key Features Implemented:**
+
+1. **Search Strategy Preview:**
+   - "🔍 Preview Search" button reveals all available search strategies
+   - Shows smart extraction results from brand/model detection, feature analysis, keyword mining, and title cleaning
+   - Displays confidence levels (high/medium/low) for each strategy
+   - User can see exactly what terms will be searched before committing to analysis
+
+2. **Interactive Strategy Selection:**
+   - Radio button interface for choosing from auto-generated strategies
+   - Custom search terms entry field for complete user control
+   - Automatic radio selection when user types in custom field
+   - Tips and explanations help users understand their choices
+
+3. **Seamless Workflow Integration:**
+   - Collapsible strategy selection panel that appears on demand
+   - "✅ Use Selected Strategy" applies choice and proceeds to analysis
+   - "❌ Cancel" option returns to manual search mode
+   - Selected strategy updates main search terms field
+   - Normal pricing analysis continues with chosen terms
+
+4. **User Experience Enhancements:**
+   - Visual feedback with emojis and clear labels
+   - Color-coded confidence indicators guide decision making
+   - Educational tooltips help users learn effective search patterns
+   - Preview-modify-analyze cycle for optimal results
+
+#### **Technical Implementation:**
+
+**Files Modified:**
+- `ebay_tools/ebay_tools/apps/price_analyzer.py` - Main implementation with search modification
+- `windows_installer/ebay_tools/apps/price_analyzer.py` - Windows version with identical features
+- `README.md` - Updated with new search modification features
+
+**Key Methods Added:**
+- `_preview_search_strategies()` - Main preview functionality that shows strategy selection interface
+- `_display_strategy_selection()` - Creates UI for strategy selection with radio buttons and custom entry
+- `_use_selected_strategy()` - Applies user's chosen strategy and proceeds to analysis
+- `_hide_strategy_selection()` - Collapses strategy interface when not needed
+
+**UI Framework Enhancements:**
+- Added strategy_frame (LabelFrame) for collapsible strategy selection panel
+- Enhanced options_frame layout with dual button configuration
+- Added strategy selection variables (selected_strategy_var, custom_search_var)
+- Implemented dynamic UI updates based on user interaction
+
+#### **Search Modification Workflow:**
+
+**User Experience:**
+1. **Enter Search Terms**: User provides basic search terms or item data
+2. **Preview Strategies**: Click "🔍 Preview Search" to see smart suggestions
+3. **Choose Strategy**: Select from multiple auto-generated options or enter custom terms
+4. **Apply Selection**: Click "✅ Use Selected Strategy" to proceed
+5. **Continue Analysis**: Normal pricing analysis proceeds with chosen search terms
+
+**Strategy Types Available:**
+- **Brand + Model** (High Confidence): Detected brand and model combinations
+- **Feature + Type** (Medium Confidence): Key features with product type classification
+- **Keywords** (Medium Confidence): Important keywords mined from description
+- **Title Cleaned** (Low Confidence): Cleaned title with noise words removed
+- **Custom** (User Defined): Complete user control over search terms
+
+#### **Addresses User Feedback:**
+
+**Original Issue**: "the search is not returning anything. we need to break up the title into make and model or combinations of the words. maybe use names from the description"
+
+**Solution Implemented:**
+- ✅ **Smart title breakdown**: Automatic brand/model detection and extraction
+- ✅ **Multiple search strategies**: Brand/model, features, keywords, cleaned title
+- ✅ **Description mining**: Keywords extracted from description text
+- ✅ **User control**: Preview and modify any auto-generated search terms
+- ✅ **Educational value**: Users learn what search patterns work best
+
+#### **Testing and Verification:**
+
+**Test Results:**
+- ✅ Smart search extraction working correctly
+- ✅ Multiple strategies generated with appropriate confidence levels
+- ✅ User interface elements function properly
+- ✅ Strategy selection and application workflow complete
+- ✅ Integration with existing pricing analysis seamless
+
+**Example Search Transformations:**
+- `'Madame Alexander Poor Cinderella 1540 Doll Vintage'` → 4 strategies including `'madame alexander cinderella'`
+- `'RARE VINTAGE EXCELLENT Apple iPhone 13 Pro Max'` → 4 strategies including `'apple iphone'`
+- Complex noisy titles properly cleaned while preserving important terms
+
+### 🎯 **PREVIOUSLY COMPLETED: Processing Tags Reset System**
 
 **Major Enhancement**: Implemented comprehensive reset functionality for processing tags with granular control options.
 
