@@ -19,6 +19,8 @@ import urllib.parse
 import statistics
 import csv
 import os
+import string
+from collections import Counter
 
 try:
     import requests
@@ -188,6 +190,330 @@ class ResearchDataManager:
                 writer.writerow(row)
 
 
+class SmartSearchExtractor:
+    """
+    Intelligent search term extraction that breaks down titles into meaningful components
+    and mines descriptions for additional search terms.
+    """
+    
+    def __init__(self):
+        # Common brand patterns and their variations
+        self.brand_patterns = {
+            # Electronics
+            'apple': ['apple', 'iphone', 'ipad', 'macbook', 'airpods'],
+            'samsung': ['samsung', 'galaxy'],
+            'sony': ['sony', 'playstation', 'ps3', 'ps4', 'ps5'],
+            'nintendo': ['nintendo', 'switch', 'wii', 'gameboy'],
+            'microsoft': ['microsoft', 'xbox', 'surface'],
+            
+            # Collectibles
+            'madame alexander': ['madame alexander', 'madam alexander'],
+            'barbie': ['barbie', 'mattel barbie'],
+            'american girl': ['american girl', 'ag doll'],
+            'hot wheels': ['hot wheels', 'hotwheels'],
+            'lego': ['lego', 'legos'],
+            
+            # Watches
+            'rolex': ['rolex'],
+            'omega': ['omega'],
+            'seiko': ['seiko'],
+            'casio': ['casio', 'g-shock'],
+            
+            # Fashion
+            'coach': ['coach'],
+            'louis vuitton': ['louis vuitton', 'lv'],
+            'gucci': ['gucci'],
+            
+            # Tools
+            'dewalt': ['dewalt'],
+            'milwaukee': ['milwaukee'],
+            'makita': ['makita']
+        }
+        
+        # Common model/product type patterns
+        self.model_patterns = {
+            # iPhone models
+            'iphone': r'iphone\s*(\d+)\s*(pro|plus|max|mini)?',
+            # Watch models
+            'submariner': r'submariner',
+            'speedmaster': r'speedmaster',
+            # Doll models
+            'cinderella': r'cinderella',
+            'poor cinderella': r'poor\s+cinderella'
+        }
+        
+        # Stop words to remove
+        self.stop_words = {
+            'the', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with',
+            'by', 'from', 'up', 'about', 'into', 'through', 'during', 'before',
+            'after', 'above', 'below', 'between', 'among', 'this', 'that', 'these',
+            'those', 'a', 'an', 'is', 'are', 'was', 'were', 'be', 'been', 'being',
+            'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'should',
+            'could', 'can', 'may', 'might', 'must', 'shall', 'very', 'too', 'so',
+            'just', 'now', 'only', 'also', 'really', 'quite', 'still', 'already',
+            'yet', 'again', 'back', 'here', 'there', 'where', 'when', 'why', 'how',
+            'what', 'which', 'who', 'whom', 'whose', 'all', 'both', 'each', 'few',
+            'more', 'most', 'other', 'some', 'such', 'no', 'nor', 'not', 'own',
+            'same', 'than', 'then', 'them', 'they', 'we', 'you', 'your', 'yours',
+            'he', 'him', 'his', 'she', 'her', 'hers', 'it', 'its', 'our', 'ours',
+            'their', 'theirs', 'me', 'my', 'mine', 'us'
+        }
+        
+        # eBay-specific noise words to remove
+        self.ebay_noise = {
+            'fast', 'free', 'shipping', 'new', 'used', 'nice', 'great', 'excellent',
+            'rare', 'vintage', 'antique', 'beautiful', 'stunning', 'amazing',
+            'perfect', 'mint', 'condition', 'collectible', 'estate', 'sale',
+            'lot', 'bundle', 'set', 'collection', 'authentic', 'genuine',
+            'original', 'oem', 'replacement', 'part', 'parts', 'working',
+            'tested', 'refurbished', 'restored', 'repair', 'broken', 'damaged',
+            'untested', 'as-is', 'asis', 'read', 'description', 'please',
+            'look', 'see', 'photos', 'pictures', 'pics', 'nr', 'reserve',
+            'auction', 'buy', 'now', 'bin', 'obo', 'offer', 'best', 'reduced',
+            'price', 'drop', 'must', 'sell', 'moving', 'quick', 'fast'
+        }
+    
+    def extract_search_terms(self, item_data):
+        """Extract intelligent search terms from item data."""
+        all_text = self._gather_text_sources(item_data)
+        
+        # Generate multiple search strategies
+        search_strategies = []
+        
+        # Strategy 1: Brand + Model + Key Features
+        brand_model = self._extract_brand_model_terms(all_text)
+        if brand_model:
+            search_strategies.append({
+                'terms': brand_model,
+                'strategy': 'brand_model',
+                'confidence': 'high'
+            })
+        
+        # Strategy 2: Key Features + Type
+        feature_type = self._extract_feature_type_terms(all_text)
+        if feature_type:
+            search_strategies.append({
+                'terms': feature_type,
+                'strategy': 'feature_type',
+                'confidence': 'medium'
+            })
+        
+        # Strategy 3: Important Keywords from description
+        keyword_terms = self._extract_keyword_terms(all_text)
+        if keyword_terms:
+            search_strategies.append({
+                'terms': keyword_terms,
+                'strategy': 'keywords',
+                'confidence': 'medium'
+            })
+        
+        # Strategy 4: Cleaned title fallback
+        title_fallback = self._extract_cleaned_title(all_text)
+        if title_fallback:
+            search_strategies.append({
+                'terms': title_fallback,
+                'strategy': 'title_cleaned',
+                'confidence': 'low'
+            })
+        
+        return search_strategies
+    
+    def _gather_text_sources(self, item_data):
+        """Gather all available text from item data."""
+        text_sources = {}
+        
+        # Title sources
+        if "title" in item_data and item_data["title"]:
+            text_sources['title'] = item_data["title"]
+        elif "temp_title" in item_data and item_data["temp_title"]:
+            text_sources['title'] = item_data["temp_title"]
+        
+        # Description sources
+        if "description" in item_data and item_data["description"]:
+            text_sources['description'] = item_data["description"]
+        elif "temp_description" in item_data and item_data["temp_description"]:
+            text_sources['description'] = item_data["temp_description"]
+        
+        # Item specifics
+        if "item_specifics" in item_data and isinstance(item_data["item_specifics"], dict):
+            specifics_text = []
+            for key, value in item_data["item_specifics"].items():
+                if value and isinstance(value, str):
+                    specifics_text.append(f"{key}: {value}")
+            if specifics_text:
+                text_sources['specifics'] = " ".join(specifics_text)
+        
+        return text_sources
+    
+    def _extract_brand_model_terms(self, text_sources):
+        """Extract brand and model information."""
+        all_text = " ".join(text_sources.values()).lower()
+        
+        found_brands = []
+        found_models = []
+        
+        # Find brands
+        for brand, variations in self.brand_patterns.items():
+            for variation in variations:
+                if variation.lower() in all_text:
+                    found_brands.append(brand)
+                    break
+        
+        # Find models using regex patterns
+        import re
+        for model_name, pattern in self.model_patterns.items():
+            matches = re.findall(pattern, all_text, re.IGNORECASE)
+            if matches:
+                found_models.append(model_name)
+        
+        # Combine brand and model
+        if found_brands and found_models:
+            return f"{found_brands[0]} {found_models[0]}"
+        elif found_brands:
+            # Add common product type from title
+            title = text_sources.get('title', '')
+            product_type = self._extract_product_type(title)
+            if product_type:
+                return f"{found_brands[0]} {product_type}"
+            return found_brands[0]
+        elif found_models:
+            return found_models[0]
+        
+        return None
+    
+    def _extract_feature_type_terms(self, text_sources):
+        """Extract key features and product type."""
+        title = text_sources.get('title', '').lower()
+        description = text_sources.get('description', '').lower()
+        
+        # Common product types
+        product_types = {
+            'doll': ['doll', 'dolls'],
+            'watch': ['watch', 'watches', 'timepiece'],
+            'phone': ['phone', 'smartphone', 'iphone', 'android'],
+            'game': ['game', 'gaming', 'console', 'xbox', 'playstation'],
+            'tool': ['tool', 'drill', 'saw', 'wrench', 'screwdriver'],
+            'bag': ['bag', 'purse', 'handbag', 'backpack'],
+            'jewelry': ['ring', 'necklace', 'bracelet', 'earrings'],
+            'book': ['book', 'novel', 'guide', 'manual'],
+            'toy': ['toy', 'action figure', 'collectible']
+        }
+        
+        found_type = None
+        for type_name, keywords in product_types.items():
+            for keyword in keywords:
+                if keyword in title or keyword in description:
+                    found_type = type_name
+                    break
+            if found_type:
+                break
+        
+        # Extract important descriptors
+        descriptors = []
+        important_words = self._extract_important_words(title + " " + description)
+        
+        if important_words:
+            # Take top 3-4 most important words
+            descriptors = important_words[:4]
+        
+        if found_type and descriptors:
+            return f"{' '.join(descriptors)} {found_type}"
+        elif found_type:
+            return found_type
+        elif descriptors:
+            return ' '.join(descriptors)
+        
+        return None
+    
+    def _extract_keyword_terms(self, text_sources):
+        """Extract important keywords from description."""
+        description = text_sources.get('description', '')
+        if not description:
+            return None
+        
+        # Extract important words from description
+        important_words = self._extract_important_words(description)
+        
+        if len(important_words) >= 2:
+            return ' '.join(important_words[:3])  # Top 3 keywords
+        
+        return None
+    
+    def _extract_cleaned_title(self, text_sources):
+        """Extract and clean the title as fallback."""
+        title = text_sources.get('title', '')
+        if not title:
+            return None
+        
+        # Clean the title
+        words = title.lower().split()
+        cleaned_words = []
+        
+        for word in words:
+            # Remove punctuation
+            word = word.strip(string.punctuation)
+            
+            # Skip if empty, stop word, or noise word
+            if (word and 
+                word not in self.stop_words and 
+                word not in self.ebay_noise and
+                len(word) > 2):  # Skip very short words
+                cleaned_words.append(word)
+        
+        # Return first 4-5 meaningful words
+        return ' '.join(cleaned_words[:5])
+    
+    def _extract_important_words(self, text):
+        """Extract important words using frequency analysis."""
+        if not text:
+            return []
+        
+        words = text.lower().split()
+        cleaned_words = []
+        
+        for word in words:
+            # Remove punctuation
+            word = word.strip(string.punctuation)
+            
+            # Skip if empty, stop word, or noise word
+            if (word and 
+                word not in self.stop_words and 
+                word not in self.ebay_noise and
+                len(word) > 2 and
+                not word.isdigit()):  # Skip pure numbers
+                cleaned_words.append(word)
+        
+        # Count frequency and return most common
+        if cleaned_words:
+            word_counts = Counter(cleaned_words)
+            # Return words that appear at least once, sorted by frequency
+            return [word for word, count in word_counts.most_common(10)]
+        
+        return []
+    
+    def _extract_product_type(self, title):
+        """Extract product type from title."""
+        title_lower = title.lower()
+        
+        # Common product indicators
+        if any(word in title_lower for word in ['doll', 'dolls']):
+            return 'doll'
+        elif any(word in title_lower for word in ['watch', 'timepiece']):
+            return 'watch'
+        elif any(word in title_lower for word in ['phone', 'iphone']):
+            return 'phone'
+        elif any(word in title_lower for word in ['game', 'console']):
+            return 'game'
+        elif any(word in title_lower for word in ['tool', 'drill']):
+            return 'tool'
+        elif any(word in title_lower for word in ['bag', 'purse']):
+            return 'bag'
+        elif any(word in title_lower for word in ['book', 'manual']):
+            return 'book'
+        
+        return None
+
+
 class PriceAnalyzer:
     """eBay price analyzer that finds similar sold items and recommends pricing."""
     
@@ -197,6 +523,7 @@ class PriceAnalyzer:
         self.user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
         self.url_generator = eBaySearchURLGenerator()
         self.research_manager = ResearchDataManager()
+        self.search_extractor = SmartSearchExtractor()
         
     def _load_config(self, config_file=None):
         """Load configuration from file or use defaults."""
@@ -222,7 +549,7 @@ class PriceAnalyzer:
     
     def analyze_item(self, search_terms=None, item_data=None, markup_percent=None, sample_limit=None):
         """
-        Analyze eBay pricing for an item.
+        Analyze eBay pricing for an item using multiple search strategies.
         
         Args:
             search_terms: Search terms to use for finding similar items
@@ -233,12 +560,65 @@ class PriceAnalyzer:
         Returns:
             Dictionary with pricing analysis results
         """
-        if not search_terms and item_data:
-            # Extract search terms from item data
-            search_terms = self._extract_search_terms(item_data)
+        # Extract multiple search strategies if we have item data
+        search_strategies = []
         
-        if not search_terms:
+        if not search_terms and item_data:
+            # Use smart search extraction to get multiple strategies
+            search_strategies = self.search_extractor.extract_search_terms(item_data)
+        elif search_terms:
+            # Use provided search terms as primary strategy
+            search_strategies = [{
+                'terms': search_terms,
+                'strategy': 'provided',
+                'confidence': 'high'
+            }]
+        
+        if not search_strategies:
             raise ValueError("Search terms or item data must be provided")
+        
+        # Try each search strategy until we find results
+        best_result = None
+        tried_strategies = []
+        
+        for strategy in search_strategies:
+            search_terms = strategy['terms']
+            tried_strategies.append({
+                'terms': search_terms,
+                'strategy': strategy['strategy'],
+                'confidence': strategy['confidence']
+            })
+            
+            result = self._analyze_with_search_terms(search_terms, markup_percent, sample_limit, strategy)
+            
+            if result['success'] or (result.get('current_items') and len(result['current_items']) > 0):
+                # Found results with this strategy
+                result['search_strategies_tried'] = tried_strategies
+                result['successful_strategy'] = strategy
+                return result
+            
+            # If this strategy didn't work, try the next one
+            print(f"Strategy '{strategy['strategy']}' with terms '{search_terms}' returned no results, trying next...")
+        
+        # If no strategies worked, return the last attempt with all tried strategies
+        if best_result is None:
+            best_result = self._analyze_with_search_terms(search_strategies[0]['terms'], markup_percent, sample_limit, search_strategies[0])
+        
+        best_result['search_strategies_tried'] = tried_strategies
+        best_result['message'] = f"No results found with {len(tried_strategies)} search strategies. Consider manual research."
+        
+        return best_result
+    
+    def _analyze_with_search_terms(self, search_terms, markup_percent, sample_limit, strategy_info):
+        """
+        Perform analysis with specific search terms.
+        """
+        if not search_terms:
+            return {
+                "success": False,
+                "message": "No search terms provided",
+                "search_terms": search_terms
+            }
             
         # Use provided markup or default from config
         markup = markup_percent if markup_percent is not None else self.config["default_markup"]
@@ -310,45 +690,20 @@ class PriceAnalyzer:
         return result
     
     def _extract_search_terms(self, item_data):
-        """Extract comprehensive search terms from item data."""
-        search_terms = []
+        """Legacy method - now delegates to SmartSearchExtractor."""
+        strategies = self.search_extractor.extract_search_terms(item_data)
         
-        # Use title if available (primary search term)
+        # Return the best strategy's terms, or fallback to title
+        if strategies:
+            return strategies[0]['terms']
+        
+        # Fallback to simple title extraction
         if "title" in item_data and item_data["title"]:
-            # Clean up the title - remove common noise words but keep important details
-            title = item_data["title"]
-            search_terms.append(title)
+            return item_data["title"]
         elif "temp_title" in item_data and item_data["temp_title"]:
-            search_terms.append(item_data["temp_title"])
-            
-        # Add important item specifics that help identify the exact item
-        if "item_specifics" in item_data:
-            specifics = item_data["item_specifics"]
-            
-            # Priority order: Brand, Model, MPN are most important for matching
-            priority_fields = ["Brand", "Model", "MPN", "Part Number"]
-            for field in priority_fields:
-                if field in specifics and specifics[field]:
-                    search_terms.append(specifics[field])
-            
-            # Add other identifying characteristics
-            other_important = ["Color", "Size", "Type", "Series", "Edition"]
-            for field in other_important:
-                if field in specifics and specifics[field]:
-                    # Only add if it's not already in the title
-                    if specifics[field].lower() not in " ".join(search_terms).lower():
-                        search_terms.append(specifics[field])
+            return item_data["temp_title"]
         
-        # Join search terms with spaces
-        full_search = " ".join(search_terms)
-        
-        # Clean up the search string
-        # Remove extra spaces and common noise words that might hurt search accuracy
-        noise_words = ["FAST", "FREE", "SHIPPING", "NEW", "USED", "NICE", "GREAT", "EXCELLENT", "RARE"]
-        words = full_search.split()
-        cleaned_words = [word for word in words if word.upper() not in noise_words]
-        
-        return " ".join(cleaned_words)
+        return "unknown item"
     
     def _fetch_real_sold_items(self, search_terms, limit=10):
         """
@@ -760,9 +1115,21 @@ class PriceAnalyzerGUI(tk.Toplevel):
         search_entry = ttk.Entry(search_frame, textvariable=self.search_terms_var, width=50)
         search_entry.grid(row=0, column=1, padx=5, pady=5, sticky=tk.EW)
         
+        # Configure grid weights
+        search_frame.grid_columnconfigure(1, weight=1)
+        
+        # Search strategy selection frame
+        self.strategy_frame = ttk.LabelFrame(search_frame, text="🔍 Search Strategy Options")
+        self.strategy_frame.grid(row=1, column=0, columnspan=2, padx=5, pady=5, sticky=tk.EW)
+        self.strategy_frame.grid_remove()  # Initially hidden
+        
+        # Strategy selection variables
+        self.selected_strategy_var = tk.StringVar()
+        self.custom_search_var = tk.StringVar()
+        
         # Options frame
         options_frame = ttk.Frame(search_frame)
-        options_frame.grid(row=1, column=0, columnspan=2, padx=5, pady=5, sticky=tk.EW)
+        options_frame.grid(row=2, column=0, columnspan=2, padx=5, pady=5, sticky=tk.EW)
         
         ttk.Label(options_frame, text="Markup %:").pack(side=tk.LEFT, padx=5)
         ttk.Entry(options_frame, textvariable=self.markup_var, width=5).pack(side=tk.LEFT, padx=5)
@@ -770,7 +1137,12 @@ class PriceAnalyzerGUI(tk.Toplevel):
         ttk.Label(options_frame, text="Sample Limit:").pack(side=tk.LEFT, padx=5)
         ttk.Entry(options_frame, textvariable=self.sample_limit_var, width=5).pack(side=tk.LEFT, padx=5)
         
-        ttk.Button(options_frame, text="Analyze", command=self._analyze_pricing).pack(side=tk.RIGHT, padx=5)
+        # Buttons frame
+        buttons_frame = ttk.Frame(options_frame)
+        buttons_frame.pack(side=tk.RIGHT, padx=5)
+        
+        ttk.Button(buttons_frame, text="🔍 Preview Search", command=self._preview_search_strategies).pack(side=tk.LEFT, padx=2)
+        ttk.Button(buttons_frame, text="Analyze", command=self._analyze_pricing).pack(side=tk.LEFT, padx=2)
         
         # Results frame
         self.results_frame = ttk.LabelFrame(main_frame, text="Results")
@@ -801,12 +1173,180 @@ class PriceAnalyzerGUI(tk.Toplevel):
             command=self.destroy
         ).pack(side=tk.RIGHT, padx=5)
         
+    def _preview_search_strategies(self):
+        """Preview and allow modification of search strategies."""
+        search_terms = self.search_terms_var.get().strip()
+        if not search_terms and not self.item_data:
+            messagebox.showerror("Error", "Please enter search terms or provide item data")
+            return
+        
+        # Get search strategies
+        if self.item_data:
+            strategies = self.analyzer.search_extractor.extract_search_terms(self.item_data)
+        else:
+            # Create basic strategy from manual search terms
+            strategies = [{
+                'terms': search_terms,
+                'strategy': 'manual',
+                'confidence': 'high'
+            }]
+        
+        if not strategies:
+            strategies = [{
+                'terms': search_terms or "unknown item",
+                'strategy': 'fallback',
+                'confidence': 'low'
+            }]
+        
+        # Display strategy selection
+        self._display_strategy_selection(strategies)
+    
+    def _display_strategy_selection(self, strategies):
+        """Display strategy selection interface."""
+        # Clear strategy frame
+        for widget in self.strategy_frame.winfo_children():
+            widget.destroy()
+        
+        # Show strategy frame
+        self.strategy_frame.grid()
+        
+        # Strategy selection header
+        header_frame = ttk.Frame(self.strategy_frame)
+        header_frame.pack(fill=tk.X, padx=10, pady=5)
+        
+        ttk.Label(
+            header_frame,
+            text="Choose a search strategy or create a custom one:",
+            font=("Segoe UI", 10, "bold")
+        ).pack(anchor=tk.W)
+        
+        # Strategy radio buttons
+        strategies_container = ttk.Frame(self.strategy_frame)
+        strategies_container.pack(fill=tk.X, padx=10, pady=5)
+        
+        for i, strategy in enumerate(strategies):
+            confidence_color = {
+                'high': 'darkgreen',
+                'medium': 'orange',
+                'low': 'gray'
+            }.get(strategy['confidence'], 'black')
+            
+            strategy_frame = ttk.Frame(strategies_container)
+            strategy_frame.pack(fill=tk.X, pady=2)
+            
+            # Radio button
+            radio = ttk.Radiobutton(
+                strategy_frame,
+                text=f"{strategy['strategy'].title()}: '{strategy['terms']}'" + 
+                     f" ({strategy['confidence']} confidence)",
+                variable=self.selected_strategy_var,
+                value=strategy['terms']
+            )
+            radio.pack(anchor=tk.W)
+            
+            # Set first strategy as default
+            if i == 0:
+                self.selected_strategy_var.set(strategy['terms'])
+        
+        # Custom search option
+        custom_frame = ttk.Frame(strategies_container)
+        custom_frame.pack(fill=tk.X, pady=5)
+        
+        custom_radio = ttk.Radiobutton(
+            custom_frame,
+            text="Custom search terms:",
+            variable=self.selected_strategy_var,
+            value="custom"
+        )
+        custom_radio.pack(side=tk.LEFT)
+        
+        custom_entry = ttk.Entry(
+            custom_frame,
+            textvariable=self.custom_search_var,
+            width=40
+        )
+        custom_entry.pack(side=tk.LEFT, padx=10, fill=tk.X, expand=True)
+        
+        # Bind custom entry to select custom radio
+        def on_custom_entry_focus(event):
+            self.selected_strategy_var.set("custom")
+        
+        custom_entry.bind("<FocusIn>", on_custom_entry_focus)
+        custom_entry.bind("<KeyPress>", on_custom_entry_focus)
+        
+        # Action buttons
+        action_frame = ttk.Frame(self.strategy_frame)
+        action_frame.pack(fill=tk.X, padx=10, pady=10)
+        
+        ttk.Button(
+            action_frame,
+            text="✅ Use Selected Strategy",
+            command=self._use_selected_strategy
+        ).pack(side=tk.LEFT, padx=5)
+        
+        ttk.Button(
+            action_frame,
+            text="❌ Cancel",
+            command=self._hide_strategy_selection
+        ).pack(side=tk.LEFT, padx=5)
+        
+        # Tips
+        tips_frame = ttk.Frame(self.strategy_frame)
+        tips_frame.pack(fill=tk.X, padx=10, pady=5)
+        
+        tips_text = (
+            "💡 Tips: High confidence strategies usually work better. "
+            "Try specific brand/model terms for best results. "
+            "Custom terms allow complete control over the search."
+        )
+        
+        ttk.Label(
+            tips_frame,
+            text=tips_text,
+            font=("Segoe UI", 8),
+            foreground="gray",
+            wraplength=500
+        ).pack(anchor=tk.W)
+    
+    def _use_selected_strategy(self):
+        """Use the selected search strategy for analysis."""
+        selected = self.selected_strategy_var.get()
+        
+        if not selected:
+            messagebox.showerror("Error", "Please select a search strategy")
+            return
+        
+        if selected == "custom":
+            custom_terms = self.custom_search_var.get().strip()
+            if not custom_terms:
+                messagebox.showerror("Error", "Please enter custom search terms")
+                return
+            search_terms = custom_terms
+        else:
+            search_terms = selected
+        
+        # Update search terms field
+        self.search_terms_var.set(search_terms)
+        
+        # Hide strategy selection
+        self._hide_strategy_selection()
+        
+        # Start analysis
+        self._analyze_pricing()
+    
+    def _hide_strategy_selection(self):
+        """Hide the strategy selection interface."""
+        self.strategy_frame.grid_remove()
+    
     def _analyze_pricing(self):
         """Analyze pricing based on search terms."""
         search_terms = self.search_terms_var.get().strip()
         if not search_terms:
-            messagebox.showerror("Error", "Please enter search terms")
+            messagebox.showerror("Error", "Please enter search terms or use search preview")
             return
+        
+        # Hide strategy selection if visible
+        self._hide_strategy_selection()
             
         try:
             markup = float(self.markup_var.get())
@@ -933,6 +1473,10 @@ class PriceAnalyzerGUI(tk.Toplevel):
         # Current listings table
         if "current_items" in results and results["current_items"]:
             self._display_current_listings(parent, results["current_items"])
+        
+        # Search Strategies Information for manual pricing mode
+        if "search_strategies_tried" in results:
+            self._display_search_strategies(parent, results)
         
         # Research Tools for manual pricing mode
         if "research_tools" in results:
@@ -1213,12 +1757,82 @@ class PriceAnalyzerGUI(tk.Toplevel):
             foreground="orange"
         ).pack(anchor=tk.W, pady=(2,0))
         
+        # Search Strategies Information
+        if "search_strategies_tried" in results:
+            self._display_search_strategies(parent, results)
+        
         # Research Tools and Alternatives Section
         if "research_tools" in results:
             self._display_research_tools(parent, results["research_tools"])
         
         # Initial validation
         validate_and_approve()
+    
+    def _display_search_strategies(self, parent, results):
+        """Display information about search strategies that were tried."""
+        strategies_frame = ttk.LabelFrame(parent, text="🔍 Search Strategy Analysis")
+        strategies_frame.pack(fill=tk.X, padx=10, pady=5)
+        
+        strategies_info = ttk.Frame(strategies_frame)
+        strategies_info.pack(fill=tk.X, padx=10, pady=5)
+        
+        # Show successful strategy if any
+        if "successful_strategy" in results:
+            strategy = results["successful_strategy"]
+            ttk.Label(
+                strategies_info,
+                text=f"✅ Successful Strategy: {strategy['strategy'].title()} ({strategy['confidence']} confidence)",
+                font=("Segoe UI", 9, "bold"),
+                foreground="green"
+            ).pack(anchor=tk.W, pady=2)
+            
+            ttk.Label(
+                strategies_info,
+                text=f"Search Terms Used: '{strategy['terms']}'",
+                font=("Segoe UI", 9)
+            ).pack(anchor=tk.W, padx=10, pady=1)
+        
+        # Show all strategies tried
+        if "search_strategies_tried" in results and len(results["search_strategies_tried"]) > 1:
+            ttk.Label(
+                strategies_info,
+                text="Strategies Tried:",
+                font=("Segoe UI", 9, "bold")
+            ).pack(anchor=tk.W, pady=(5,2))
+            
+            for i, strategy in enumerate(results["search_strategies_tried"], 1):
+                confidence_color = {
+                    'high': 'darkgreen',
+                    'medium': 'orange', 
+                    'low': 'gray'
+                }.get(strategy['confidence'], 'black')
+                
+                strategy_text = f"{i}. {strategy['strategy'].title()}: '{strategy['terms']}' ({strategy['confidence']} confidence)"
+                
+                ttk.Label(
+                    strategies_info,
+                    text=strategy_text,
+                    font=("Segoe UI", 8),
+                    foreground=confidence_color
+                ).pack(anchor=tk.W, padx=15, pady=1)
+        
+        # Show strategy explanation
+        explanation_text = (
+            "The system tries multiple search strategies to find the best results:\n"
+            "• Brand + Model: Combines detected brand and model information\n"
+            "• Feature + Type: Uses key features and product type\n"
+            "• Keywords: Important words from description\n"
+            "• Title Cleaned: Cleaned version of the original title"
+        )
+        
+        explanation_label = ttk.Label(
+            strategies_info,
+            text=explanation_text,
+            font=("Segoe UI", 8),
+            foreground="gray",
+            justify=tk.LEFT
+        )
+        explanation_label.pack(anchor=tk.W, pady=(5,0))
     
     def _display_research_tools(self, parent, research_tools):
         """Display research tools and manual verification options."""

@@ -4,6 +4,7 @@ A comprehensive automation suite for creating eBay listings using AI/LLM technol
 
 ## ✨ New in v3.0.0
 
+- 🔍 **Smart Search Modification** - Preview and modify search terms before pricing analysis
 - 🔄 **Processing Tags Reset System** - Individual, type-based, and global reset options
 - 📋 **Interactive Pricing with User Approval** - Full transparency and research display  
 - 🔍 **Professional Research Tools** - Manual verification workflows and third-party service recommendations
@@ -15,6 +16,7 @@ A comprehensive automation suite for creating eBay listings using AI/LLM technol
 
 - 🤖 **AI-Powered Description Generation** - Uses LLaVA, Claude, or GPT-4 Vision APIs
 - 💰 **Interactive Pricing Analysis** - Research eBay sold listings with user approval
+- 🔍 **Smart Search Modification** - Preview and choose from multiple search strategies
 - 🔍 **Professional Research Tools** - Manual verification URLs, checklists, and export templates
 - 🔄 **Processing Tags Reset** - Reset individual items, by type, or globally
 - 📸 **Photo Processing** - Batch image processing with EXIF handling
