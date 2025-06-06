@@ -171,7 +171,7 @@ class EbayDirectListingDemo:
     
     def update_ebay_status(self):
         """Update the eBay authentication status display."""
-        if self.ebay_integration.is_authenticated():
+        if self.ebay_integration.authenticated:
             self.ebay_status_var.set("Authenticated")
             if self.current_item_index >= 0:
                 self.create_listing_btn.config(state=tk.NORMAL)
@@ -260,7 +260,7 @@ class EbayDirectListingDemo:
         self.display_item_details()
         
         # Update eBay listing button state
-        if self.ebay_integration.is_authenticated():
+        if self.ebay_integration.authenticated:
             self.create_listing_btn.config(state=tk.NORMAL)
     
     def display_item_details(self):
