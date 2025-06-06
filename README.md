@@ -1,46 +1,66 @@
-# eBay Tools
+# eBay Tools v3.0.0
 
 A comprehensive automation suite for creating eBay listings using AI/LLM technology. This system provides an end-to-end workflow from photo organization to final listing generation with integrated pricing analysis.
+
+## ✨ New in v3.0.0
+
+- 🔄 **Processing Tags Reset System** - Individual, type-based, and global reset options
+- 📋 **Interactive Pricing with User Approval** - Full transparency and research display  
+- ℹ️ **Version Display in All Applications** - Help > About shows v3.0.0 across suite
+- 🛠️ **Complete Installers** - Overwrite previous versions safely with verification
+- 🎯 **Enhanced UI Integration** - Reset button and pricing controls in main workflow
 
 ## Features
 
 - 🤖 **AI-Powered Description Generation** - Uses LLaVA, Claude, or GPT-4 Vision APIs
-- 💰 **Automated Price Analysis** - Analyzes eBay sold listings for market pricing
+- 💰 **Interactive Pricing Analysis** - Research eBay sold listings with user approval
+- 🔄 **Processing Tags Reset** - Reset individual items, by type, or globally
 - 📸 **Photo Processing** - Batch image processing with EXIF handling
 - 📊 **CSV Export** - Generates eBay-compatible CSV files for bulk uploads
 - 📋 **Queue Management** - Organize and process multiple items efficiently
-- 🔄 **Complete Workflow** - From setup to final eBay listing
+- 🎯 **Complete Workflow** - From setup to final eBay listing
 - 🌐 **HTML Gallery Creator** - Create classified ad-style galleries for local sales
 - 📱 **Mobile Integration** - Android app for on-the-go photo collection
 
 ## Installation
 
-### Windows
-```bash
-# Run the Windows installer
-install_dependencies.bat
+### 🚀 **New Complete Installers (Recommended)**
 
-# Or use the Python installer
-python install_dependencies.py
+These installers **install and verify all code files every time**, supporting both fresh installations and updates:
+
+#### Windows
+```bash
+# Complete installer - handles updates safely
+install_complete.bat
 ```
 
-### macOS
+#### Linux
 ```bash
-# Quick install (if Python 3.8+ installed)
-./quick_install_mac.sh
-
-# Or full installation with all dependencies
-./install_dependencies_mac.sh
+# Complete installer with verification
+./install_complete.sh
 ```
 
-### Linux
+#### macOS  
 ```bash
-# Run the shell script installer
-./install_dependencies.sh
-
-# Or use the Python installer
-python install_dependencies.py
+# Complete installer optimized for macOS
+./install_complete_mac.sh
 ```
+
+### ✨ **What Complete Installers Do:**
+- ✅ **Install/Update ALL Code Files** - Ensures latest features every time
+- ✅ **Backup Existing Installation** - Safe updates with rollback option
+- ✅ **Verify All Features Work** - Tests Reset Tags and version display
+- ✅ **Install Dependencies** - Handles Python packages automatically
+- ✅ **Create Shortcuts/Launchers** - Platform-appropriate application shortcuts
+- ✅ **Test Installation** - Confirms everything works before declaring success
+
+### 📋 **Legacy Installers (Dependencies Only)**
+
+For dependency installation only (use complete installers instead):
+
+#### Windows: `install_dependencies.bat`
+#### macOS: `./install_dependencies_mac.sh` 
+#### Linux: `./install_dependencies.sh`
 
 ## Quick Start
 
@@ -48,29 +68,53 @@ python install_dependencies.py
    ```bash
    python -m ebay_tools.apps.setup
    ```
+   ✨ *Check Help > About to verify version 3.0.0*
 
 2. **Processor Tool** - AI analyzes photos and generates descriptions
    ```bash
    python -m ebay_tools.apps.processor
    ```
+   ✨ *Look for "🔄 Reset Tags" button in toolbar for reset functionality*
 
 3. **Viewer Tool** - Review and edit generated descriptions
    ```bash
    python -m ebay_tools.apps.viewer
    ```
 
-4. **Export** - Generate CSV for eBay bulk upload
+4. **Price Analyzer** - Interactive pricing with market research
+   ```bash
+   python -m ebay_tools.apps.price_analyzer
+   ```
+   ✨ *User approval required for all pricing decisions*
+
+5. **Export** - Generate CSV for eBay bulk upload
+
+### 🎯 **New Features to Try:**
+- **Reset Processing Tags**: Use "🔄 Reset Tags" button in Processor for individual, type-based, or global resets
+- **Interactive Pricing**: Price Analyzer now shows research data and requires user approval
+- **Version Verification**: Check Help > About in any application to confirm v3.0.0
 
 ## Applications
 
-- **Setup Tool** (`setup.py`) - Create and manage work queues
-- **Processor Tool** (`processor.py`) - AI-powered photo analysis
-- **Viewer Tool** (`viewer.py`) - Review and export results
-- **Price Analyzer** (`price_analyzer.py`) - Market price analysis
+- **Setup Tool** (`setup.py`) - Create and manage work queues  
+  *✨ Help > About shows version 3.0.0*
+- **Processor Tool** (`processor.py`) - AI-powered photo analysis with reset functionality  
+  *✨ Features "🔄 Reset Tags" button for individual, type-based, and global resets*
+- **Viewer Tool** (`viewer.py`) - Review and export results  
+  *✨ Updated with standardized version display*
+- **Price Analyzer** (`price_analyzer.py`) - Interactive market price analysis  
+  *✨ User approval workflow with research transparency*
+- **Main Launcher** (`main_launcher.py`) - Central hub for launching all tools  
+  *✨ New centralized launcher with version information*
 - **Gallery Creator** (`gallery_creator.py`) - Create HTML classified ad galleries
 - **Mobile Import** (`mobile_import.py`) - Import data from mobile app
 - **Direct Listing** (`direct_listing.py`) - Direct eBay API integration
 - **CSV Export** (`csv_export.py`) - Export to eBay format
+
+### 🔖 **All Applications Feature:**
+- **Help > About Menu** - Shows version 3.0.0 and application-specific features
+- **Consistent UI** - Standardized menus and dialogs across all tools
+- **Error Handling** - Improved error reporting and user feedback
 
 ## Requirements
 
@@ -81,11 +125,17 @@ python install_dependencies.py
 
 ## Documentation
 
+- **[Complete Installer Guide](INSTALLER_README.md)** - New comprehensive installers
 - [Full User Manual](eBay_Tools_User_Manual.md) - Comprehensive guide
 - [Gallery Creator Guide](GALLERY_README.md) - HTML gallery documentation
 - [Mobile Integration Guide](MOBILE_INTEGRATION.md) - Android app and import docs
 - [macOS Installation](README_MAC.md) - macOS specific instructions
 - [API Documentation](ebay_tools/README.md) - Technical details
+
+### 📋 **Latest Updates:**
+- **v3.0.0 Features** - Reset functionality and interactive pricing
+- **Complete Installers** - Safe update system with verification
+- **Version Display** - All applications show consistent version information
 
 ## Project Structure
 
@@ -94,14 +144,22 @@ Ebaytools/
 ├── ebay_tools/              # Main package
 │   ├── apps/                # GUI applications
 │   ├── core/                # Core functionality
-│   └── utils/               # Utility modules
+│   └── utils/               # Utility modules (includes version_utils.py)
 ├── windows_installer/       # Windows installer files
-├── launchers/               # OS-specific launchers
-│   └── mac/                 # macOS .command files
-├── install_dependencies.py  # Cross-platform installer
-├── install_dependencies_mac.sh  # macOS installer
+├── install_complete.bat     # ✨ NEW: Complete Windows installer
+├── install_complete.sh      # ✨ NEW: Complete Linux installer  
+├── install_complete_mac.sh  # ✨ NEW: Complete macOS installer
+├── INSTALLER_README.md      # ✨ NEW: Complete installer documentation
+├── install_dependencies.py  # Legacy: Dependencies only
+├── install_dependencies_mac.sh  # Legacy: macOS dependencies only
 └── README.md               # This file
 ```
+
+### 🆕 **New Files in v3.0.0:**
+- **Complete Installers**: `install_complete.bat`, `install_complete.sh`, `install_complete_mac.sh`
+- **Installer Documentation**: `INSTALLER_README.md`
+- **Version Utilities**: `ebay_tools/utils/version_utils.py`
+- **Enhanced Applications**: All GUI apps now have Help > About with version display
 
 ## API Configuration
 
