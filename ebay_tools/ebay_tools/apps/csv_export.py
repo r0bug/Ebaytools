@@ -42,15 +42,15 @@ except ImportError:
         y = (window.winfo_screenheight() // 2) - (height // 2)
         window.geometry(f'+{x}+{y}')
 
-# Import CSV export functionality
-from ebay_csv_export import export_items_to_csv, load_json_queue
+# Import CSV and Excel export functionality
+from ebay_csv_export import export_items_to_csv, export_items_to_excel, load_json_queue
 
 class EbayExportGUI:
-    """GUI for exporting eBay listing data from JSON to CSV."""
+    """GUI for exporting eBay listing data from JSON to CSV and Excel formats."""
     def __init__(self, root):
         self.root = root
-        self.root.title("eBay CSV Export")
-        self.root.geometry("600x400")
+        self.root.title("eBay Export Tool - CSV & Excel")
+        self.root.geometry("650x450")
         
         # Set application icon if available
         try:
@@ -65,6 +65,7 @@ class EbayExportGUI:
         self.default_values_var = tk.StringVar()
         self.create_desc_var = tk.BooleanVar(value=False)
         self.use_defaults_var = tk.BooleanVar(value=False)
+        self.export_format_var = tk.StringVar(value="csv")
         
         # Create UI
         self.create_widgets()
@@ -87,8 +88,17 @@ class EbayExportGUI:
         ttk.Entry(input_frame, textvariable=self.input_file_var, width=50).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
         ttk.Button(input_frame, text="Browse...", command=self.browse_input_file).pack(side=tk.LEFT, padx=5)
         
+        # Export format selection
+        format_frame = ttk.LabelFrame(main_frame, text="Export Format", padding=10)
+        format_frame.pack(fill=tk.X, pady=5)
+        
+        ttk.Radiobutton(format_frame, text="CSV Format", variable=self.export_format_var, 
+                       value="csv", command=self.on_format_change).pack(side=tk.LEFT, padx=10)
+        ttk.Radiobutton(format_frame, text="Excel Format (eBay Bulk Upload)", variable=self.export_format_var, 
+                       value="excel", command=self.on_format_change).pack(side=tk.LEFT, padx=10)
+        
         # Output file selection
-        output_frame = ttk.LabelFrame(main_frame, text="Output CSV File", padding=10)
+        output_frame = ttk.LabelFrame(main_frame, text="Output File", padding=10)
         output_frame.pack(fill=tk.X, pady=5)
         
         ttk.Entry(output_frame, textvariable=self.output_file_var, width=50).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
@@ -168,19 +178,27 @@ class EbayExportGUI:
                 # Suggest output filename
                 if not self.output_file_var.get():
                     base_name = os.path.splitext(file_path)[0]
-                    self.output_file_var.set(f"{base_name}_export.csv")
+                    extension = ".xlsx" if self.export_format_var.get() == "excel" else ".csv"
+                    self.output_file_var.set(f"{base_name}_export{extension}")
                 
             except Exception as e:
                 self.update_info_text(f"Error loading file: {str(e)}")
                 messagebox.showerror("Error", f"Failed to load file: {str(e)}")
     
     def browse_output_file(self):
-        """Browse for output CSV file."""
-        file_path = filedialog.asksaveasfilename(
-            title="Save CSV File",
-            defaultextension=".csv",
-            filetypes=[("CSV Files", "*.csv"), ("All Files", "*.*")]
-        )
+        """Browse for output file."""
+        if self.export_format_var.get() == "excel":
+            file_path = filedialog.asksaveasfilename(
+                title="Save Excel File",
+                defaultextension=".xlsx",
+                filetypes=[("Excel Files", "*.xlsx"), ("All Files", "*.*")]
+            )
+        else:
+            file_path = filedialog.asksaveasfilename(
+                title="Save CSV File",
+                defaultextension=".csv",
+                filetypes=[("CSV Files", "*.csv"), ("All Files", "*.*")]
+            )
         if file_path:
             self.output_file_var.set(file_path)
     
@@ -225,6 +243,18 @@ class EbayExportGUI:
         state = tk.NORMAL if self.use_defaults_var.get() else tk.DISABLED
         self.defaults_entry.config(state=state)
         self.defaults_btn.config(state=state)
+    
+    def on_format_change(self):
+        """Handle format change - update file extension if needed."""
+        current_file = self.output_file_var.get()
+        if current_file:
+            base_name = os.path.splitext(current_file)[0]
+            if self.export_format_var.get() == "excel":
+                if not current_file.endswith('.xlsx'):
+                    self.output_file_var.set(f"{base_name}.xlsx")
+            else:
+                if not current_file.endswith('.csv'):
+                    self.output_file_var.set(f"{base_name}.csv")
     
     def update_info_text(self, text):
         """Update the information text widget."""
@@ -281,16 +311,26 @@ class EbayExportGUI:
             items = load_json_queue(input_file)
             
             # Show a progress indicator
-            self.status_bar.update(f"Exporting {len(items)} items...")
+            export_format = self.export_format_var.get()
+            format_name = "Excel" if export_format == "excel" else "CSV"
+            self.status_bar.update(f"Exporting {len(items)} items to {format_name}...")
             self.root.update_idletasks()
             
-            # Export to CSV
-            success, message = export_items_to_csv(
-                items,
-                output_file,
-                default_values=default_values,
-                description_dir=desc_dir
-            )
+            # Export based on selected format
+            if export_format == "excel":
+                success, message = export_items_to_excel(
+                    items,
+                    output_file,
+                    default_values=default_values,
+                    description_dir=desc_dir
+                )
+            else:
+                success, message = export_items_to_csv(
+                    items,
+                    output_file,
+                    default_values=default_values,
+                    description_dir=desc_dir
+                )
             
             if success:
                 self.status_bar.update(message)
